@@ -1,0 +1,60 @@
+[project]
+name = "agente"
+version = "2.0.0"
+description = "Sistema de agentes inteligentes con llama3.1:8b y qwen2.5:7b-instruct"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "rich>=13.7.0",
+    "httpx>=0.27.0",
+    "python-dotenv>=1.2.1",
+]
+
+[project.scripts]
+agente = "cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["agents", "core", "utils"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+fix = true
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_any_generics = false
+check_untyped_defs = true
+
+[dependency-groups]
+dev = [
+    "mypy>=1.13.0",
+    "ruff>=0.8.0",
+]
