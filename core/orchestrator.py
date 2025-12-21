@@ -7,6 +7,19 @@ from typing import Any
 from agents.executor import ExecutorAgent
 from agents.principal import PrincipalAgent
 from config import RAG_ENABLED
+from core.exceptions import (
+    RAGAuthError,
+    RAGBlocked,
+    RAGConnectionError,
+    RAGException,
+    RAGInternalError,
+    RAGInvalidRequest,
+    RAGPartialResponse,
+    RAGRateLimited,
+    RAGSessionNotFound,
+    RAGTimeout,
+    RAGUnavailable,
+)
 from core.rag_client import RAGClient
 from core.storage import KnowledgeStorage
 
@@ -85,32 +98,26 @@ class Orchestrator:
                     status_callback("Consultando Biblioteca RAG (Gemini)...")
 
                 # Prioridad: RAG -> Kimi (fallback)
-                rag_resp = self.rag.query_gemini_rag(query)
-                if rag_resp:
-                    rag_result = (rag_resp, "rag_gemini")
-                else:
-                    if status_callback:
-                        status_callback("RAG sin resultados, intentando Web (Kimi)...")
-
-                    # Fallback a Kimi si RAG falla aunque se haya pedido explícitamente
-                    kimi_resp = self.rag.query_kimi(query)
-                    if kimi_resp:
-                        rag_result = (kimi_resp, "rag_kimi")
+                rag_result = self._try_rag_with_fallback(
+                    query, "rag", status_callback
+                )
 
             elif target_mode == "kimi":
                 if status_callback:
                     status_callback("Buscando en Internet (Kimi)...")
 
                 # Prioridad: Kimi directo
-                kimi_resp = self.rag.query_kimi(query)
-                if kimi_resp:
-                    rag_result = (kimi_resp, "rag_kimi")
+                rag_result = self._try_rag_with_fallback(
+                    query, "kimi", status_callback
+                )
 
             else:  # target_mode == "auto" (comportamiento original)
                 if status_callback:
                     status_callback("Consultando fuentes externas (Auto)...")
 
-                rag_result = self._try_rag_sources(query)
+                rag_result = self._try_rag_with_fallback(
+                    query, "auto", status_callback
+                )
 
         if rag_result:
             response, source = rag_result
@@ -166,17 +173,218 @@ class Orchestrator:
             "confidence": analysis["confidence"],
         }
 
-    def _try_rag_sources(self, query: str) -> tuple[str, str] | None:
-        """Intenta obtener respuesta de fuentes RAG en orden."""
-        # 1. Intentar Gemini RAG
-        rag_response = self.rag.query_gemini_rag(query)
-        if rag_response:
-            return rag_response, "rag_gemini"
+    def _try_rag_with_fallback(
+        self,
+        query: str,
+        mode: str,
+        status_callback: Callable[[str], None] | None = None,
+    ) -> tuple[str, str] | None:
+        """Intenta obtener respuesta de RAG con manejo de excepciones.
 
-        # 2. Intentar Kimi-k2
-        kimi_response = self.rag.query_kimi(query)
-        if kimi_response:
-            return kimi_response, "rag_kimi"
+        Args:
+            query: Consulta del usuario
+            mode: 'rag', 'kimi', o 'auto'
+            status_callback: Función para actualizar estado en UI
+
+        Returns:
+            Tupla (respuesta, fuente) o None si falla completamente
+        """
+        try:
+            if mode == "rag":
+                # Intentar RAG (Gemini)
+                response = self.rag.query_gemini_rag(query)
+                return response, "rag_gemini"
+
+            elif mode == "kimi":
+                # Intentar Kimi directo
+                response = self.rag.query_kimi(query)
+                return response, "rag_kimi"
+
+            else:  # mode == "auto"
+                # Intentar RAG primero, luego Kimi
+                try:
+                    response = self.rag.query_gemini_rag(query)
+                    return response, "rag_gemini"
+                except RAGException:
+                    # Si RAG falla, intentar Kimi
+                    response = self.rag.query_kimi(query)
+                    return response, "rag_kimi"
+
+        except RAGUnavailable:
+            # Proveedor IA no disponible (503)
+            # Decisión: Cache -> LLM local
+            if status_callback:
+                status_callback("🔄 Servicio remoto no disponible, usando conocimiento local...")
+
+            cached = self.storage.get_cached_response(query)
+            if cached:
+                return cached, "cache"
+
+            # Fallback a LLM local
+            learned_context = self._get_learned_context(query)
+            response = self.principal.generate_local_fallback(query, learned_context)
+            return response, "principal_fallback"
+
+        except RAGConnectionError:
+            # Error de red/conexión
+            # Decisión: Cache -> LLM local (modo offline completo)
+            if status_callback:
+                status_callback("🔌 Sin conexión a la API, usando modo offline...")
+
+            cached = self.storage.get_cached_response(query)
+            if cached:
+                return cached, "cache"
+
+            # Fallback a LLM local
+            learned_context = self._get_learned_context(query)
+            response = self.principal.generate_local_fallback(query, learned_context)
+            return response, "principal_fallback"
+
+        except RAGTimeout:
+            # Timeout externo (504)
+            # Decisión: Retry 1x con 2s -> Cache
+            if status_callback:
+                status_callback("⏱️ Timeout del servicio remoto, reintentando...")
+
+            time.sleep(2)
+            try:
+                # Retry una vez
+                if mode == "rag":
+                    response = self.rag.query_gemini_rag(query)
+                    return response, "rag_gemini"
+                elif mode == "kimi":
+                    response = self.rag.query_kimi(query)
+                    return response, "rag_kimi"
+                else:  # auto
+                    response = self.rag.query_gemini_rag(query)
+                    return response, "rag_gemini"
+            except RAGException:
+                # Retry falló, usar cache
+                if status_callback:
+                    status_callback("⏱️ Timeout persistente, usando caché...")
+
+                cached = self.storage.get_cached_response(query)
+                if cached:
+                    return cached, "cache"
+
+                # Sin cache, abort (no usar LLM local para timeouts)
+                return None
+
+        except RAGRateLimited as e:
+            # Rate limit alcanzado (429)
+            # Decisión: Backoff exponencial, retry hasta 3x
+            wait_time = e.retry_after or 5
+
+            if status_callback:
+                status_callback(f"⏳ Límite de consultas alcanzado. Esperando {wait_time}s...")
+
+            time.sleep(wait_time)
+
+            # Retry con backoff exponencial (máximo 3 intentos)
+            for attempt in range(3):
+                try:
+                    if mode == "rag":
+                        response = self.rag.query_gemini_rag(query)
+                        return response, "rag_gemini"
+                    elif mode == "kimi":
+                        response = self.rag.query_kimi(query)
+                        return response, "rag_kimi"
+                    else:  # auto
+                        response = self.rag.query_gemini_rag(query)
+                        return response, "rag_gemini"
+                except RAGRateLimited:
+                    # Todavía rate limited, esperar más
+                    wait_time = wait_time * 2  # Backoff exponencial
+                    if attempt < 2:  # No esperar después del último intento
+                        if status_callback:
+                            status_callback(f"⏳ Aún limitado. Esperando {wait_time}s...")
+                        time.sleep(wait_time)
+                except RAGException:
+                    # Otro error, abort
+                    break
+
+            # Todos los retries fallaron
+            if status_callback:
+                status_callback("⏳ Rate limit persistente, abortando...")
+
+            return None
+
+        except RAGPartialResponse as e:
+            # Respuesta parcial (206) o placeholder detectado
+            # Decisión: Usar la respuesta si existe, sino cache
+            if status_callback:
+                status_callback("⚠️ Respuesta parcial (sin todas las fuentes)...")
+
+            if e.response:
+                # Hay respuesta parcial, usarla
+                return e.response, "rag_partial"
+
+            # No hay respuesta, usar cache
+            cached = self.storage.get_cached_response(query)
+            if cached:
+                return cached, "cache"
+
+            # Sin cache, abort
+            return None
+
+        except RAGSessionNotFound:
+            # Sesión no encontrada (422)
+            # Decisión: Retry UNA VEZ con session_id=0
+            if status_callback:
+                status_callback("⚠️ Sesión inválida, creando nueva sesión...")
+
+            try:
+                # Retry con session_id=0 (nueva sesión)
+                if mode == "rag":
+                    response = self.rag.query(query, mode="rag", session_id=0)
+                    return response, "rag_gemini"
+                elif mode == "kimi":
+                    response = self.rag.query(query, mode="kimi", session_id=0)
+                    return response, "rag_kimi"
+                else:  # auto
+                    response = self.rag.query(query, mode="auto", session_id=0)
+                    return response, "rag_gemini"
+            except RAGException:
+                # Retry falló, abort
+                if status_callback:
+                    status_callback("❌ No se pudo crear nueva sesión...")
+                return None
+
+        except RAGBlocked as e:
+            # Guardian bloqueó la consulta (403)
+            # Decisión: NO reintentar, abort
+            if status_callback:
+                status_callback(f"🛡️ Consulta bloqueada por seguridad: {e.reason}")
+
+            # No hay fallback para contenido bloqueado
+            return None
+
+        except RAGAuthError:
+            # Autenticación inválida (401)
+            # Decisión: NO reintentar, abort
+            if status_callback:
+                status_callback("❌ Error de autenticación. Verifica RAG_API_KEY en .env")
+
+            # No hay fallback para auth
+            return None
+
+        except RAGInvalidRequest as e:
+            # Request inválido (400/422)
+            # Decisión: NO reintentar (es un bug del CLI), abort
+            if status_callback:
+                status_callback(f"❌ Request inválido: {e.message}")
+
+            # No hay fallback para bugs
+            return None
+
+        except RAGInternalError:
+            # Error interno de la API (500)
+            # Decisión: NO reintentar, abort
+            if status_callback:
+                status_callback("❌ Error interno del servidor. Reporta este problema.")
+
+            # No hay fallback para bugs del servidor
+            return None
 
         return None
 

@@ -43,6 +43,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
+"tests/*.py" = ["SIM117"]  # Permitir nested with en tests para claridad
 
 [tool.mypy]
 python_version = "3.12"
@@ -57,4 +58,6 @@ check_untyped_defs = true
 dev = [
     "mypy>=1.13.0",
     "ruff>=0.8.0",
+    "pytest>=8.0.0",
+    "pytest-mock>=3.12.0",
 ]

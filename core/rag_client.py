@@ -3,11 +3,15 @@
 from typing import Any
 
 import httpx
-from rich.console import Console
 
 from config import RAG_API_KEY, RAG_BASE_URL, RAG_TIMEOUT
-
-console = Console()
+from core.exceptions import (
+    RAGConnectionError,
+    RAGException,
+    RAGPartialResponse,
+    RAGSessionNotFound,
+    map_http_status_to_exception,
+)
 
 
 class RAGClient:
@@ -23,7 +27,7 @@ class RAGClient:
 
     def query(
         self, question: str, mode: str = "auto", session_id: int = 0
-    ) -> str | None:
+    ) -> str:
         """
         Consulta al endpoint /api/internal/llm-gateway.
 
@@ -33,7 +37,21 @@ class RAGClient:
             session_id: ID de sesión (0 para nueva sesión temporal)
 
         Returns:
-            Respuesta del servidor o None si falla
+            Respuesta del servidor
+
+        Raises:
+            RAGUnavailable: Proveedor IA no disponible (503)
+            RAGTimeout: Timeout externo (504)
+            RAGUpstreamError: Error upstream (502)
+            RAGRateLimited: Rate limit alcanzado (429)
+            RAGBlocked: Guardian bloqueó la consulta (403)
+            RAGAuthError: Autenticación inválida (401)
+            RAGInvalidRequest: Request inválido (400/422)
+            RAGSessionNotFound: Sesión no encontrada (422)
+            RAGNotFound: Endpoint no existe (404)
+            RAGInternalError: Error interno API (500)
+            RAGConnectionError: Error de red/conexión
+            RAGPartialResponse: Respuesta parcial (206)
         """
         try:
             payload = {
@@ -47,42 +65,90 @@ class RAGClient:
                 json=payload
             )
 
+            # Éxito (200)
             if response.status_code == 200:
                 data = response.json()
-                # El servidor devuelve: { "answer": "...", "mode_used": "...", ... }
                 answer = data.get("answer")
 
-                # Filtrar respuestas placeholder que indican fallo en el servidor
+                # Detectar respuestas placeholder (cache corrupto)
+                # Comportamiento actual: devolvía None
+                # Nuevo: lanza RAGPartialResponse para que orchestrator decida
                 if isinstance(answer, str):
                     if "Voy a buscar información actualizada sobre esto" in answer:
-                        console.print("[yellow]⚠️ RAG devolvió respuesta placeholder (cache corrupto).[/yellow]")
-                        return None
+                        raise RAGPartialResponse(
+                            "RAG devolvió respuesta placeholder (cache corrupto)",
+                            response=answer
+                        )
                     return answer
-                return None
 
-            # Manejo específico para error de sesión no encontrada (500)
+                # answer no es string válido
+                raise RAGPartialResponse("Respuesta sin contenido válido", response=None)
+
+            # Caso especial: Error 500 con "Sesión no encontrada"
+            # Comportamiento actual: retry automático con session_id=0
+            # Nuevo: lanza RAGSessionNotFound para que orchestrator decida el retry
             if (
                 response.status_code == 500
                 and "Sesión" in response.text
                 and "no encontrada" in response.text
                 and session_id != 0
             ):
-                console.print("[yellow]⚠️ Sesión no encontrada, reintentando con nueva sesión...[/yellow]")
-                return self.query(question, mode, session_id=0)
+                raise RAGSessionNotFound(
+                    "Sesión no encontrada en el servidor",
+                    session_id=session_id
+                )
 
-            console.print(f"[yellow]⚠️ Error del servidor ({response.status_code}): {response.text}[/yellow]")
-            return None
+            # Mapeo HTTP → Excepciones de dominio
+            # Esto reemplaza el print + return None
+            try:
+                response_json = response.json()
+            except Exception:
+                response_json = None
+
+            raise map_http_status_to_exception(
+                response.status_code,
+                response.text,
+                response_json
+            )
+
+        except (RAGPartialResponse, RAGSessionNotFound):
+            # Re-lanzar excepciones de dominio sin modificar
+            raise
+
+        except RAGException:
+            # Re-lanzar TODAS las excepciones de dominio sin modificar
+            raise
+
+        except httpx.TimeoutException as e:
+            # Timeout de red (no HTTP)
+            raise RAGConnectionError(f"Timeout de conexión: {e}") from e
+
+        except httpx.ConnectError as e:
+            # API no alcanzable
+            raise RAGConnectionError(f"No se pudo conectar a la API: {e}") from e
+
+        except httpx.HTTPStatusError as e:
+            # Error HTTP no manejado arriba
+            raise RAGConnectionError(f"Error HTTP: {e}") from e
 
         except Exception as e:
-            console.print(f"[red]❌ Error de conexión RAG: {e}[/red]")
-            return None
+            # Cualquier otro error de red/httpx
+            raise RAGConnectionError(f"Error de conexión inesperado: {e}") from e
 
-    def query_gemini_rag(self, question: str) -> str | None:
-        """Consulta forzando modo RAG (Gemini + PDFs)."""
+    def query_gemini_rag(self, question: str) -> str:
+        """Consulta forzando modo RAG (Gemini + PDFs).
+
+        Raises:
+            Ver excepciones en query()
+        """
         return self.query(question, mode="rag")
 
-    def query_kimi(self, question: str) -> str | None:
-        """Consulta forzando modo Kimi (Chat general)."""
+    def query_kimi(self, question: str) -> str:
+        """Consulta forzando modo Kimi (Chat general).
+
+        Raises:
+            Ver excepciones en query()
+        """
         return self.query(question, mode="kimi")
 
     def is_available(self) -> bool:
