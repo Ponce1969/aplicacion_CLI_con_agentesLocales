@@ -1,5 +1,6 @@
 """CLI principal del sistema de agentes."""
 
+import argparse
 import sys
 from typing import NoReturn
 
@@ -31,25 +32,33 @@ class AgentCLI:
         self.orchestrator = Orchestrator()
         self.running = True
 
-    def run(self, initial_query: str | None = None) -> None:
+    def run(self, initial_query: str | None = None, interactive: bool = False) -> None:
         """
         Ejecuta el CLI interactivo.
 
         Args:
-            initial_query: Si se proporciona, procesa esta consulta y sale.
+            initial_query: Si se proporciona, procesa esta consulta inicial.
+            interactive: Si es True, mantiene la sesión abierta después de la consulta inicial.
         """
         print_header()
         self._check_system_status()
 
-        # Modo no interactivo (single-shot)
+        # Procesar consulta inicial si existe
         if initial_query:
             if self._handle_command(initial_query):
-                return
-            self._process_query(initial_query)
-            return
+                # Si fue un comando y no estamos en modo interactivo, salir
+                if not interactive:
+                    return
+            else:
+                self._process_query(initial_query)
+                # Si no estamos en modo interactivo, salir tras la respuesta
+                if not interactive:
+                    return
 
-        # Modo interactivo
-        print_help()
+        # Modo interactivo (bucle principal)
+        # Mostrar ayuda solo si no venimos de una consulta inicial (para limpiar visualmente)
+        if not initial_query:
+            print_help()
 
         while self.running:
             try:
@@ -175,12 +184,24 @@ class AgentCLI:
 
 def main() -> None:
     """Entry point del CLI."""
+    parser = argparse.ArgumentParser(description="Sistema de Agentes Inteligentes")
+    parser.add_argument(
+        "query",
+        nargs="?",
+        help="Consulta inicial para procesar",
+    )
+    parser.add_argument(
+        "-i",
+        "--interactive",
+        action="store_true",
+        help="Mantener sesión interactiva después de la consulta inicial",
+    )
+
+    args = parser.parse_args()
+
     try:
         cli = AgentCLI()
-
-        # Soporte para argumentos de línea de comandos (single-shot)
-        initial_query = sys.argv[1] if len(sys.argv) > 1 else None
-        cli.run(initial_query)
+        cli.run(initial_query=args.query, interactive=args.interactive)
 
     except Exception as e:
         print_error(f"Error fatal: {e}")

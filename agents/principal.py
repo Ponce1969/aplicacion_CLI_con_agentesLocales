@@ -22,22 +22,25 @@ class PrincipalAgent:
             base_url=OLLAMA_BASE_URL, timeout=OLLAMA_TIMEOUT
         )
 
-    def analyze(self, query: str, context: str | None = None) -> dict[str, Any]:
+    def analyze(
+        self,
+        query: str,
+        context: str | None = None,
+        history: list[dict[str, str]] | None = None,
+    ) -> dict[str, Any]:
         """
         Analiza la consulta y decide estrategia.
 
         Args:
             query: Consulta del usuario
             context: Contexto adicional (patrones aprendidos, etc.)
-
-        Returns:
-            Dict con análisis y respuesta
+            history: Historial de la conversación
         """
         # Detectar patrones de backend
         detected_patterns = self._detect_backend_patterns(query)
 
         # Construir prompt enriquecido
-        prompt = self._build_prompt(query, context, detected_patterns)
+        prompt = self._build_prompt(query, context, detected_patterns, history)
 
         # Generar respuesta
         response = self._generate(prompt)
@@ -83,6 +86,7 @@ class PrincipalAgent:
         query: str,
         context: str | None,
         patterns: list[str],
+        history: list[dict[str, str]] | None = None,
     ) -> str:
         """Construye prompt optimizado y conciso."""
         parts = []
@@ -109,7 +113,14 @@ class PrincipalAgent:
         if context:
             parts.append(f"\nMemoria Previa:\n{context[:300]}")
 
-        # 5. Instrucción Final
+        # 5. Historial de Conversación
+        if history:
+            parts.append("\nHistorial de Conversación:")
+            for msg in history:
+                role = "User" if msg["role"] == "user" else "Assistant"
+                parts.append(f"{role}: {msg['content']}")
+
+        # 6. Instrucción Final
         parts.append(
             "\nREGLAS CRÍTICAS DE ROUTING:"
             "\n- NO respondas con texto si necesitas buscar. Usa SOLO las etiquetas."

@@ -19,6 +19,7 @@ class Orchestrator:
         self.executor = ExecutorAgent()
         self.rag = RAGClient()
         self.storage = KnowledgeStorage()
+        self.history: list[dict[str, str]] = []
 
     def process(
         self, query: str, status_callback: Callable[[str], None] | None = None
@@ -35,8 +36,12 @@ class Orchestrator:
         if status_callback:
             status_callback("Verificando memoria local...")
 
-        # 1. Verificar cache
-        cached = self.storage.get_cached_response(query)
+        # 1. Verificar cache (solo si no hay historial previo para no romper contexto)
+        # Si hay historial, es mejor reprocesar para mantener el hilo.
+        cached = None
+        if not self.history:
+            cached = self.storage.get_cached_response(query)
+
         if cached:
             return {
                 "response": cached,
@@ -51,7 +56,7 @@ class Orchestrator:
         if status_callback:
             status_callback("Analizando consulta (Llama 3.1)...")
 
-        analysis = self.principal.analyze(query, learned_context)
+        analysis = self.principal.analyze(query, learned_context, self.history)
 
         # 4. Routing Inteligente (Intent vs Confianza)
         intent = analysis.get("intent", "local")
@@ -145,6 +150,12 @@ class Orchestrator:
 
         # 8. Cachear respuesta
         self.storage.cache_response(query, response)
+
+        # 9. Actualizar historial
+        self.history.append({"role": "user", "content": query})
+        self.history.append({"role": "assistant", "content": response})
+        if len(self.history) > 10:
+            self.history = self.history[-10:]
 
         return {
             "response": response,
