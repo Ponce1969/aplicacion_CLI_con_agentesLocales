@@ -51,5 +51,10 @@ dmypy.json
 # Legacy
 _legacy/
 
+# Environment variables (CRITICAL: Never commit secrets)
+.env
+.env.local
+.env.*.local
+
 # RAG Token
 .rag_token

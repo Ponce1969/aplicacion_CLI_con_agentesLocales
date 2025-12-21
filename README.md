@@ -1,6 +1,21 @@
 # 🤖 Sistema de Agentes Híbrido (CLI & RAG)
 
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Type Checked: mypy](https://img.shields.io/badge/type_checked-mypy-blue.svg)](http://mypy-lang.org/)
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+
 Un asistente de codificación inteligente que combina la velocidad de modelos locales (**Llama 3.1**, **Qwen 2.5**) con la autoridad de una base de conocimientos remota (**RAG Gemini**, **Web Kimi**).
+
+> **🎯 Características Principales:**
+> - 🚀 Respuestas rápidas con modelos locales (Ollama)
+> - 📚 Acceso a base de conocimiento técnica (RAG)
+> - 🌐 Búsqueda web en tiempo real (Kimi)
+> - 🔍 Routing inteligente basado en contexto
+> - ✅ Validación automática de código
+> - 💬 Modo interactivo con memoria de conversación
+> - 🎨 Arquitectura hexagonal limpia
+> - 🔒 Type-safe con mypy --strict
 
 ---
 
@@ -73,10 +88,14 @@ Requiere **Python 3.12+** y acceso a un servidor Ollama local.
     ```
 
 2.  **Configuración (.env)**:
-    ```ini
-    RAG_BASE_URL="https://swagger-rag.loquinto.com"
-    RAG_API_KEY="tu_clave_aquí"
-    OLLAMA_BASE_URL="http://localhost:11434"
+    ```bash
+    # Copia el archivo de ejemplo
+    cp .env.example .env
+    
+    # Edita .env con tus valores
+    # RAG_BASE_URL: URL de tu servidor RAG
+    # RAG_API_KEY: Genera una con: uv run python scripts/generar_clave.py
+    # OLLAMA_BASE_URL: URL de Ollama (normalmente http://localhost:11434)
     ```
 
 3.  **Verificación**:
@@ -110,4 +129,50 @@ El agente tiene acceso prioritario a estos documentos técnicos:
 | **Feedback UI** | 🟢 Completo | Spinners y mensajes claros con Rich. |
 
 ---
-*Actualizado: 20/12/2025*
+
+## 🤝 Contribuir
+
+¡Las contribuciones son bienvenidas! Por favor lee [CONTRIBUTING.md](CONTRIBUTING.md) para conocer los lineamientos.
+
+### Quick Start para Contribuidores
+
+```bash
+# Fork y clonar
+git clone https://github.com/tu-usuario/agente.git
+cd agente
+
+# Instalar dependencias de desarrollo
+uv sync
+
+# Ejecutar tests
+uv run pytest
+
+# Verificar calidad de código
+uv run mypy .
+uv run ruff check .
+```
+
+---
+
+## 📄 Licencia
+
+Este proyecto está bajo la licencia MIT. Ver [LICENSE](LICENSE) para más detalles.
+
+---
+
+## 🙏 Agradecimientos
+
+- [Ollama](https://ollama.ai/) - Modelos locales
+- [FastAPI](https://fastapi.tiangolo.com/) - Framework del servidor RAG
+- [Rich](https://rich.readthedocs.io/) - Terminal UI
+- [uv](https://github.com/astral-sh/uv) - Gestor de paquetes rápido
+
+---
+
+## 📞 Contacto
+
+¿Preguntas o sugerencias? Abre un [Issue](https://github.com/tu-usuario/agente/issues) o inicia una [Discussion](https://github.com/tu-usuario/agente/discussions).
+
+---
+
+*Actualizado: 21/12/2025*
