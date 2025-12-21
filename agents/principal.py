@@ -4,7 +4,13 @@ from typing import Any
 
 import httpx
 
-from config import BACKEND_PATTERNS, OLLAMA_BASE_URL, OLLAMA_TIMEOUT, PRINCIPAL_MODEL
+from config import (
+    BACKEND_PATTERNS,
+    KNOWLEDGE_BASE_SUMMARY,
+    OLLAMA_BASE_URL,
+    OLLAMA_TIMEOUT,
+    PRINCIPAL_MODEL,
+)
 
 
 class PrincipalAgent:
@@ -36,11 +42,29 @@ class PrincipalAgent:
         # Generar respuesta
         response = self._generate(prompt)
 
+        # Detectar intención explícita
+        intent = "local"
+        if "[[RAG]]" in response:
+            intent = "rag"
+            response = response.replace("[[RAG]]", "").strip()
+        elif "[[WEB]]" in response:
+            intent = "web"
+            response = response.replace("[[WEB]]", "").strip()
+
+        # Fallback: Detectar intenciones verbales si fallaron los tags
+        if intent == "local":
+            lower_resp = response.lower()
+            if "necesito consultar la biblioteca" in lower_resp:
+                intent = "rag"
+            elif "buscaré información" in lower_resp or "buscar rumores" in lower_resp:
+                intent = "web"
+
         return {
             "response": response,
             "patterns_detected": detected_patterns,
             "needs_validation": self._needs_validation(response),
             "confidence": self._estimate_confidence(response),
+            "intent": intent,
         }
 
     def _detect_backend_patterns(self, query: str) -> list[str]:
@@ -63,20 +87,62 @@ class PrincipalAgent:
         """Construye prompt optimizado y conciso."""
         parts = []
 
-        # Solo agregar contexto si es relevante
-        if patterns:
-            parts.append(f"Backend: {', '.join(patterns[:2])}")
-
-        if context:
-            parts.append(f"Ref: {context[:200]}")
-
-        # Instrucciones mínimas
+        # 1. Rol y Estándares
         parts.append(
-            "Python 3.12+, type hints, mypy strict.\n"
-            f"Q: {query}"
+            "Eres un Asistente Senior de Python (Llama 3.1). "
+            "Estándares: Python 3.12+, Type Hints estrictos, Clean Code."
+        )
+
+        # 2. Contexto de Biblioteca (RAG)
+        parts.append(
+            f"\nBIBLIOTECA DISPONIBLE (RAG):{KNOWLEDGE_BASE_SUMMARY}\n"
+            "NOTA: Tienes acceso a estos libros mediante la herramienta [[RAG]]. "
+            "AUNQUE SEPAS LA RESPUESTA, si el tema está cubierto por estos libros (FastAPI, PyQt6, Buenas Prácticas), "
+            "PREFIERE SIEMPRE usar [[RAG]] para responder con autoridad y citas."
+        )
+
+        # 3. Contexto Técnico Detectado
+        if patterns:
+            parts.append(f"\nContexto Técnico Detectado: {', '.join(patterns)}")
+
+        # 4. Contexto Aprendido (Memoria)
+        if context:
+            parts.append(f"\nMemoria Previa:\n{context[:300]}")
+
+        # 5. Instrucción Final
+        parts.append(
+            "\nREGLAS CRÍTICAS DE ROUTING:"
+            "\n- NO respondas con texto si necesitas buscar. Usa SOLO las etiquetas."
+            "\n- Noticias, clima, precios, 'novedades recientes' -> [[WEB]]"
+            "\n- Libros técnicos, documentación específica, 'FastAPI', 'PyQt6' -> [[RAG]]"
+            "\n- Lógica pura, Python básico, corrección de código -> Responde tú mismo."
+            "\n\nEjemplos:"
+            "\nQ: Novedades Python 3.14? -> [[WEB]]"
+            "\nQ: Cómo usar Depends en FastAPI? -> [[RAG]]"
+            "\nQ: Ordena esta lista. -> [Tu respuesta]"
+            f"\n\nQ: {query}"
         )
 
         return "\n".join(parts)
+
+    def generate_local_fallback(self, query: str, context: str | None = None) -> str:
+        """Genera una respuesta local cuando fallan las herramientas externas."""
+        parts = []
+        parts.append(
+            "Eres un Asistente Senior de Python (Llama 3.1). "
+            "Las herramientas externas (RAG/Web) han fallado o no están disponibles. "
+            "Debes responder a la consulta del usuario utilizando SOLO tu conocimiento interno. "
+            "NO uses etiquetas como [[RAG]] o [[WEB]]. "
+            "Sé honesto si no conoces la respuesta, pero intenta ayudar con lo que sepas."
+        )
+
+        if context:
+            parts.append(f"\nContexto previo:\n{context[:300]}")
+
+        parts.append(f"\nQ: {query}")
+
+        prompt = "\n".join(parts)
+        return self._generate(prompt)
 
     def _generate(self, prompt: str) -> str:
         """Genera respuesta usando Ollama."""
@@ -86,10 +152,10 @@ class PrincipalAgent:
                 "prompt": prompt,
                 "stream": False,
                 "options": {
-                    "temperature": 0.3,
+                    "temperature": 0.1,  # Más determinista para decisiones
                     "top_p": 0.9,
-                    "num_predict": 512,
-                    "num_ctx": 2048,
+                    "num_predict": 1024,
+                    "num_ctx": 4096,
                 },
             }
 
@@ -98,7 +164,7 @@ class PrincipalAgent:
 
             result = response.json()
             answer = result.get("response", "")
-            return str(answer) if answer is not None else ""
+            return str(answer).strip() if answer is not None else ""
 
         except Exception as e:
             return f"Error generando respuesta: {e}"
@@ -110,12 +176,29 @@ class PrincipalAgent:
 
     def _estimate_confidence(self, response: str) -> float:
         """Estima confianza en la respuesta (0.0 - 1.0)."""
+        # Si el modelo decidió usar herramientas externas, la confianza en su decisión es alta (para activar el flujo)
+        # pero la confianza en el 'contenido local' es nula.
+        if "[[RAG]]" in response or "[[WEB]]" in response:
+            return 0.0  # Fuerza el uso de herramientas externas
+
         uncertainty_phrases = [
             "no estoy seguro",
             "podría ser",
             "tal vez",
             "no tengo información",
             "no sé",
+            "no tengo información sobre",
+            "mi última actualización",
+            "no disponibilidad pública",
+            "recomendaría consultar",
+            "necesito consultar",
+            "necesito buscar",
+            "buscaré información",
+            "fuentes actualizadas",
+            "consultar documentación",
+            "no puedo proporcionar",
+            "no tengo acceso",
+            "información no disponible",
         ]
 
         response_lower = response.lower()
@@ -124,7 +207,8 @@ class PrincipalAgent:
         )
 
         if uncertainty_count > 0:
-            return max(0.3, 1.0 - (uncertainty_count * 0.2))
+            # Baja confianza drásticamente si hay incertidumbre
+            return max(0.1, 0.8 - (uncertainty_count * 0.3))
 
         if len(response) < 50:
             return 0.5

@@ -51,9 +51,24 @@ class RAGClient:
                 data = response.json()
                 # El servidor devuelve: { "answer": "...", "mode_used": "...", ... }
                 answer = data.get("answer")
+
+                # Filtrar respuestas placeholder que indican fallo en el servidor
                 if isinstance(answer, str):
+                    if "Voy a buscar información actualizada sobre esto" in answer:
+                        console.print("[yellow]⚠️ RAG devolvió respuesta placeholder (cache corrupto).[/yellow]")
+                        return None
                     return answer
                 return None
+
+            # Manejo específico para error de sesión no encontrada (500)
+            if (
+                response.status_code == 500
+                and "Sesión" in response.text
+                and "no encontrada" in response.text
+                and session_id != 0
+            ):
+                console.print("[yellow]⚠️ Sesión no encontrada, reintentando con nueva sesión...[/yellow]")
+                return self.query(question, mode, session_id=0)
 
             console.print(f"[yellow]⚠️ Error del servidor ({response.status_code}): {response.text}[/yellow]")
             return None

@@ -59,6 +59,20 @@ BACKEND_PATTERNS = {
     ]
 }
 
+# Base de conocimiento indexada (RAG)
+# Formato optimizado para el prompt del sistema: ID: Título (Keywords)
+KNOWLEDGE_BASE_SUMMARY: Final[str] = """
+- ID 5: 97 Things Every Programmer Should Know (software wisdom, best practices)
+- ID 6: FastAPI Modern Web Dev (backend, api, python web)
+- ID 7: Fluent Python (advanced python, internals, data structures)
+- ID 9: Create GUI Applications with PyQt6 (desktop gui, pyqt, widgets)
+- ID 10: The Pragmatic Programmer (methodology, career, coding philosophy)
+- ID 11/16: Data Science from Scratch (algorithms, data analysis, basics)
+- ID 12: Prompt Engineering for LLMs (ai, prompts, llm applications)
+- ID 14: Google TechAI Prompting (official guide, techniques)
+- ID 15: Think Python (fundamentals, learning python)
+"""
+
 # Colores para CLI (Rich)
 COLORS = {
     "user": "cyan bold",

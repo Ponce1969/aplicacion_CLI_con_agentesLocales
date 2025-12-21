@@ -38,12 +38,20 @@ class ExecutorAgent:
 
     def _build_validation_prompt(self, code: str, context: str) -> str:
         """Construye prompt optimizado para validación."""
-        prompt = f"Valida Python 3.12+, type hints, mypy strict:\n```python\n{code}\n```\n"
+        prompt = (
+            "Eres un Senior Python Code Reviewer. Tu tarea es validar el siguiente código.\n"
+            "Reglas:\n"
+            "1. RESPONDE SIEMPRE EN ESPAÑOL.\n"
+            "2. Verifica compatibilidad con Python 3.12+.\n"
+            "3. Exige Type Hints estrictos y compatibilidad con mypy --strict.\n"
+            "4. Si el código es correcto, responde 'Código Correcto'.\n"
+            "5. Si hay errores, lístalos brevemente y muestra la versión corregida.\n\n"
+            f"Código a revisar:\n```python\n{code}\n```\n"
+        )
 
         if context:
-            prompt += f"Ctx: {context[:100]}\n"
+            prompt += f"\nContexto original: {context[:200]}\n"
 
-        prompt += "Respuesta: OK o errores."
         return prompt
 
     def _generate(self, prompt: str) -> str:

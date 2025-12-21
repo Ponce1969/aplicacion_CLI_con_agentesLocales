@@ -19,7 +19,6 @@ from utils.display import (
     print_rag,
     print_stats,
     print_success,
-    print_user,
     print_validation,
     print_warning,
 )
@@ -44,6 +43,8 @@ class AgentCLI:
 
         # Modo no interactivo (single-shot)
         if initial_query:
+            if self._handle_command(initial_query):
+                return
             self._process_query(initial_query)
             return
 
@@ -115,10 +116,12 @@ class AgentCLI:
 
     def _process_query(self, query: str) -> None:
         """Procesa una consulta del usuario."""
-        print_user(query)
 
-        with console.status("[cyan]Procesando...[/cyan]", spinner="dots"):
-            result = self.orchestrator.process(query)
+        with console.status("[cyan]Procesando...[/cyan]", spinner="dots") as status:
+            def update_status(message: str) -> None:
+                status.update(f"[cyan]{message}[/cyan]")
+
+            result = self.orchestrator.process(query, status_callback=update_status)
 
         source = result.get("source", "unknown")
         response = result.get("response", "")
@@ -174,7 +177,11 @@ def main() -> None:
     """Entry point del CLI."""
     try:
         cli = AgentCLI()
-        cli.run()
+
+        # Soporte para argumentos de línea de comandos (single-shot)
+        initial_query = sys.argv[1] if len(sys.argv) > 1 else None
+        cli.run(initial_query)
+
     except Exception as e:
         print_error(f"Error fatal: {e}")
         sys.exit(1)

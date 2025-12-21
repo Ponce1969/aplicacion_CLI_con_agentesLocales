@@ -168,8 +168,7 @@ def print_help() -> None:
 • [blue]RAG (Gemini + Kimi-k2)[/blue]: Consulta cuando hay baja confianza
 • [magenta]Cache (SQLite)[/magenta]: Respuestas instantáneas de patrones aprendidos
 
-[dim]El sistema aprende de tus patrones de backend y reduce consultas a RAG.[/dim]
-""",
+[dim]El sistema aprende de tus patrones de backend y reduce consultas a RAG.[/dim]""",
         title="🤖 Ayuda del Sistema",
         border_style="cyan",
     )

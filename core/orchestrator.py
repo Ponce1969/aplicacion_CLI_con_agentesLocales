@@ -1,6 +1,7 @@
 """Orquestador principal del sistema de agentes."""
 
 import time
+from collections.abc import Callable
 from typing import Any
 
 from agents.executor import ExecutorAgent
@@ -19,17 +20,20 @@ class Orchestrator:
         self.rag = RAGClient()
         self.storage = KnowledgeStorage()
 
-    def process(self, query: str) -> dict[str, Any]:
+    def process(
+        self, query: str, status_callback: Callable[[str], None] | None = None
+    ) -> dict[str, Any]:
         """
         Procesa una consulta del usuario.
 
         Args:
             query: Consulta del usuario
-
-        Returns:
-            Dict con respuesta y metadata
+            status_callback: Función para actualizar estado en UI
         """
         start_time = time.time()
+
+        if status_callback:
+            status_callback("Verificando memoria local...")
 
         # 1. Verificar cache
         cached = self.storage.get_cached_response(query)
@@ -44,21 +48,81 @@ class Orchestrator:
         learned_context = self._get_learned_context(query)
 
         # 3. Agente principal analiza
+        if status_callback:
+            status_callback("Analizando consulta (Llama 3.1)...")
+
         analysis = self.principal.analyze(query, learned_context)
 
-        # 4. Decidir si necesita RAG (solo si está habilitado)
+        # 4. Routing Inteligente (Intent vs Confianza)
+        intent = analysis.get("intent", "local")
         response = analysis["response"]
-        needs_rag = analysis["confidence"] < 0.6 and RAG_ENABLED
-
         source = "principal"
-        if needs_rag and self.rag.is_available():
-            rag_result = self._try_rag_sources(query)
-            if rag_result:
-                response, source = rag_result
+
+        # Determinar si necesitamos RAG
+        needs_rag = False
+        target_mode = None
+
+        if intent == "rag":
+            needs_rag = True
+            target_mode = "rag"
+        elif intent == "web":
+            needs_rag = True
+            target_mode = "kimi"
+        elif analysis["confidence"] < 0.4:
+            needs_rag = True
+            target_mode = "auto"
+
+        # Ejecutar RAG si es necesario y está habilitado
+        rag_result = None
+        if needs_rag and RAG_ENABLED and self.rag.is_available():
+            if target_mode == "rag":
+                if status_callback:
+                    status_callback("Consultando Biblioteca RAG (Gemini)...")
+
+                # Prioridad: RAG -> Kimi (fallback)
+                rag_resp = self.rag.query_gemini_rag(query)
+                if rag_resp:
+                    rag_result = (rag_resp, "rag_gemini")
+                else:
+                    if status_callback:
+                        status_callback("RAG sin resultados, intentando Web (Kimi)...")
+
+                    # Fallback a Kimi si RAG falla aunque se haya pedido explícitamente
+                    kimi_resp = self.rag.query_kimi(query)
+                    if kimi_resp:
+                        rag_result = (kimi_resp, "rag_kimi")
+
+            elif target_mode == "kimi":
+                if status_callback:
+                    status_callback("Buscando en Internet (Kimi)...")
+
+                # Prioridad: Kimi directo
+                kimi_resp = self.rag.query_kimi(query)
+                if kimi_resp:
+                    rag_result = (kimi_resp, "rag_kimi")
+
+            else:  # target_mode == "auto" (comportamiento original)
+                if status_callback:
+                    status_callback("Consultando fuentes externas (Auto)...")
+
+                rag_result = self._try_rag_sources(query)
+
+        if rag_result:
+            response, source = rag_result
+        elif needs_rag:
+            # Fallback: RAG falló, no estaba disponible o estaba deshabilitado
+            if status_callback:
+                status_callback("RAG no disponible/falló. Generando respuesta local de emergencia...")
+
+            response = self.principal.generate_local_fallback(query, learned_context)
+            source = "principal_fallback"
 
         # 5. Validar si contiene código
         validation_result = None
         if analysis["needs_validation"]:
+            if status_callback:
+                status_callback("Validando código (Qwen 2.5)...")
+
             validation_result = self.executor.validate(
                 response, context=query
             )
