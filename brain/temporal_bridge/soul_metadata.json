@@ -1,0 +1,22 @@
+{
+  "identity": {
+    "rol": "Asistente Python Senior",
+    "proyecto_activo": "Desarrollo de un sistema de e-commerce utilizando FastAPI y Arquitectura Hexagonal."
+  },
+  "witness": {
+    "última_tarea": "Explicar la implementación de una Arquitectura Hexagonal en FastAPI para un sistema de e-commerce.",
+    "estado_de_confianza": "0.9 (basado en la respuesta anterior que proporcionó información detallada sobre la arquitectura hexagonal)."
+  },
+  "compressed_memory": [
+    "La separación entre Entidades y Adapters es clave en la Arquitectura Hexagonal, permitiendo una mayor flexibilidad y reutilización de código.",
+    "Los Ports & Adapters se utilizan para definir la interfaz entre las entidades del negocio y los adaptadores que interactúan con el sistema externo.",
+    "La implementación de la arquitectura hexagonal en FastAPI requiere la creación de una capa de presentación (Adapters) que se encarga de interactuar con el framework."
+  ],
+  "pending_tasks": [
+    "Investigar y documentar mejores prácticas para la implementación de la Arquitectura Hexagonal en proyectos de e-commerce utilizando FastAPI.",
+    "Crear un ejemplo de código que demuestre la separación entre Entidades y Adapters en una aplicación de e-commerce con FastAPI."
+  ],
+  "token_budget": 457,
+  "last_mitosis": "2025-12-22T21:04:41Z",
+  "version": "1.0"
+}

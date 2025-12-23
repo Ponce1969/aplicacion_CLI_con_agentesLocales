@@ -21,6 +21,7 @@ class PrincipalAgent:
         self.client = httpx.Client(
             base_url=OLLAMA_BASE_URL, timeout=OLLAMA_TIMEOUT
         )
+        self.last_eval_count = 0  # 🧬 MANIFOLD: Tokens reales de Ollama
 
     def analyze(
         self,
@@ -68,6 +69,7 @@ class PrincipalAgent:
             "needs_validation": self._needs_validation(response),
             "confidence": self._estimate_confidence(response),
             "intent": intent,
+            "eval_count": self.last_eval_count,  # 🧬 MANIFOLD: Token count real
         }
 
     def _detect_backend_patterns(self, query: str) -> list[str]:
@@ -175,6 +177,10 @@ class PrincipalAgent:
 
             result = response.json()
             answer = result.get("response", "")
+
+            # 🧬 MANIFOLD: Guardar eval_count para metabolismo preciso
+            self.last_eval_count = result.get("eval_count", 0)
+
             return str(answer).strip() if answer is not None else ""
 
         except Exception as e:
