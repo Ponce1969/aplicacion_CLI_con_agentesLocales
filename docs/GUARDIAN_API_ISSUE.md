@@ -81,49 +81,70 @@ Consulta: {query}
 
 ---
 
-### **Solución 2: Salvoconducto para el CLI (Bypass Inteligente)**
+### **Solución 2: Salvoconducto para el CLI (Bypass Inteligente) - SIMPLIFICADO**
 
-Implementar un sistema de **API Key** que permita al CLI bypassear el Guardian de forma segura.
+**NOTA IMPORTANTE**: El usuario ya tiene una API Key existente en `.env` que la API valida para autenticación. La API está protegida por Cloudflare sin puertos expuestos. **Reutilizar esta misma key para el bypass del Guardian**.
 
-#### Implementación en la API FastAPI:
+#### Implementación en la API FastAPI (Opción Recomendada - Middleware):
 
 ```python
-# config.py
-CLI_API_KEY = os.getenv("CLI_API_KEY", "dev-cli-key-change-in-production")
+# middleware/auth.py o en main.py
+from fastapi import Request
+from starlette.middleware.base import BaseHTTPMiddleware
+import os
 
-# middleware o dependency
-from fastapi import Header, HTTPException
-
-async def verify_cli_access(x_api_key: str = Header(None)) -> bool:
-    """Verifica si la request viene del CLI autorizado."""
-    return x_api_key == CLI_API_KEY
-
-# En el endpoint de RAG
-@router.post("/api/query")
-async def query_endpoint(
-    request: QueryRequest,
-    is_cli: bool = Depends(verify_cli_access)
-):
-    # Si viene del CLI, bypassear Guardian
-    if is_cli:
-        # Ir directo a RAG sin Guardian
-        return await rag_service.query(request.query)
+class GuardianBypassMiddleware(BaseHTTPMiddleware):
+    """Middleware que marca requests autenticados para bypass del Guardian."""
     
-    # Si viene de otra fuente, aplicar Guardian
-    guardian_result = await guardian_service.check(request.query)
-    if guardian_result == "BLOCK":
-        raise HTTPException(status_code=403, detail="Consulta bloqueada por Guardian")
-    
-    return await rag_service.query(request.query)
+    async def dispatch(self, request: Request, call_next):
+        # Obtener API Key del header o query param
+        api_key = request.headers.get("X-API-Key") or request.query_params.get("api_key")
+        
+        # Verificar si es la key existente en .env
+        valid_key = os.getenv("API_KEY")  # Tu key EXISTENTE
+        
+        # Marcar request como "trusted" si la key es válida
+        request.state.is_cli = (api_key == valid_key)
+        
+        response = await call_next(request)
+        return response
+
+# En main.py
+app.add_middleware(GuardianBypassMiddleware)
 ```
 
-#### Implementación en el CLI:
+#### Implementación en el endpoint de RAG:
+
+```python
+@router.post("/api/query")
+async def query_endpoint(request: Request, query_data: QueryRequest):
+    # Verificar si viene del CLI autenticado (marcado por middleware)
+    is_cli = getattr(request.state, "is_cli", False)
+    
+    # Si viene del CLI con API Key válida, NO pasar por Guardian
+    if is_cli:
+        return await rag_service.query(query_data.query)
+    
+    # Si NO viene del CLI, aplicar Guardian
+    guardian_result = await guardian_service.check(query_data.query)
+    
+    if "BLOCK" in guardian_result:
+        raise HTTPException(
+            status_code=403,
+            detail="Consulta bloqueada por Guardian de seguridad"
+        )
+    
+    return await rag_service.query(query_data.query)
+```
+
+#### El CLI ya envía la API Key (verificar en core/rag_client.py):
 
 ```python
 # core/rag_client.py
 class RAGClient:
     def __init__(self):
-        self.api_key = os.getenv("CLI_API_KEY", "dev-cli-key-change-in-production")
+        # Usar la MISMA key que ya tienes en .env
+        self.api_key = os.getenv("API_KEY")  # Tu key existente
         self.headers = {
             "X-API-Key": self.api_key,
             "Content-Type": "application/json"
@@ -134,21 +155,27 @@ class RAGClient:
             response = await client.post(
                 f"{self.base_url}/api/query",
                 json={"query": query},
-                headers=self.headers,  # ← Incluir API Key
+                headers=self.headers,  # ← Ya incluye API Key
                 timeout=60.0
             )
             return response.json()
 ```
 
-#### Variables de Entorno:
+#### Variables de Entorno (YA EXISTENTES):
 
 ```bash
-# .env (local y servidor)
-CLI_API_KEY=your-secure-random-key-here-min-32-chars
+# .env (local y servidor) - NO CAMBIAR
+API_KEY=tu-clave-existente-que-ya-funciona
 
-# Generar key segura:
-# python -c "import secrets; print(secrets.token_urlsafe(32))"
+# NO necesitas generar nueva key, usa la que ya tienes
 ```
+
+#### Ventajas de Reutilizar la API Key Existente:
+
+✅ **Simplicidad**: No necesitas gestionar dos keys diferentes  
+✅ **Seguridad**: Cloudflare + API Key existente = ya está protegido  
+✅ **Mantenibilidad**: Un solo punto de autenticación  
+✅ **Compatibilidad**: El CLI ya envía esta key, solo falta el bypass del Guardian
 
 ---
 
