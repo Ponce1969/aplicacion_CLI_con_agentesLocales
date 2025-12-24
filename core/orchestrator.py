@@ -20,7 +20,6 @@ from core.exceptions import (
     RAGTimeout,
     RAGUnavailable,
 )
-from core.memory.noosphere import SimpleSoulRetriever
 from core.rag_client import RAGClient
 from core.storage import KnowledgeStorage
 
@@ -40,15 +39,6 @@ class Orchestrator:
         self.context_limit = 8000  # Producción: Llama 3.1:8b context window
         self.metabolic_state = "VITAL"  # VITAL, ACTIVE, FATIGUE, CRITICAL
 
-        # 🧬 NOOSPHERE: Motor de búsqueda semántica de Soul Packages
-        try:
-            self.noosphere = SimpleSoulRetriever(self.storage.brain_path)
-            souls_indexed = self.noosphere.index_past_lives()
-            if souls_indexed > 0:
-                print(f"🌿 Noosphere: {souls_indexed} Soul Packages indexados")
-        except ImportError:
-            self.noosphere = None
-            print("⚠️  Noosphere deshabilitado: instala scikit-learn con 'uv add scikit-learn'")
 
         # 🧬 MANIFOLD: Despertar consciencia (cargar Soul Package)
         self.soul_anchor = ""

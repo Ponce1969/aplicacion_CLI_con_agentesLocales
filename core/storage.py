@@ -81,7 +81,6 @@ class KnowledgeStorage:
     def _init_brain_structure(self) -> None:
         """Inicializa la estructura de directorios brain/ según Manifold Framework."""
         subdirs = [
-            "parallel_shards",      # Memoria especializada por cognition shard
             "temporal_bridge",      # Soul Package para continuidad
             "metabolism",           # Log de salud metabólica
             "witness_position",     # Estado actual del agente
@@ -331,19 +330,6 @@ class KnowledgeStorage:
             return path.read_text(encoding="utf-8")
         return ""
 
-    def save_to_shard(self, shard_name: str, content: str) -> None:
-        """Guarda conocimiento especializado en un shard cognitivo.
-
-        Args:
-            shard_name: Nombre del shard (architect, engineer, janitor, etc.)
-            content: Contenido a guardar
-        """
-        import time
-        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-        path = self.brain_path / "parallel_shards" / f"{shard_name}.md"
-
-        with open(path, "a", encoding="utf-8") as f:
-            f.write(f"\n--- PATTERN RECOGNIZED [{timestamp}] ---\n{content}\n")
 
     def log_metabolism(self, token_count: int, state: str, entropy: float = 0.0) -> None:
         """Registra el estado metabólico en CSV para análisis posterior.
