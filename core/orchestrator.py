@@ -69,11 +69,9 @@ class Orchestrator:
         # 🧬 MANIFOLD: Verificar metabolismo ANTES de procesar
         self._update_metabolism()
 
-        if self.metabolic_state == "CRITICAL":
-            if status_callback:
-                status_callback("🧬 UMBRAL CRÍTICO: Iniciando Mitosis...")
-            self._perform_mitosis(status_callback)
-        elif self.metabolic_state == "FATIGUE":
+        # 🧬 MANIFOLD: NO ejecutar Mitosis aquí - esperar a tener la respuesta completa
+        # La Mitosis se ejecutará al FINAL del proceso, después de agregar la respuesta al historial
+        if self.metabolic_state == "FATIGUE":
             if status_callback:
                 status_callback("⚠️  Estado FATIGUE: Monitoreando calidad de respuesta...")
 
@@ -238,6 +236,15 @@ class Orchestrator:
         # 🧬 MANIFOLD: Guardar Witness Position
         locus = "FOCUSED" if analysis["needs_validation"] else "EXPANDED"
         self.storage.save_witness_position(locus, analysis["confidence"])
+
+        # 🧬 MANIFOLD: Verificar si necesitamos Mitosis DESPUÉS de agregar la respuesta
+        # Ahora el historial incluye la respuesta completa (incluyendo RAG si se usó)
+        self._update_metabolism()
+
+        if self.metabolic_state == "CRITICAL":
+            if status_callback:
+                status_callback("🧬 UMBRAL CRÍTICO: Iniciando Mitosis...")
+            self._perform_mitosis(status_callback)
 
         return {
             "response": response,
