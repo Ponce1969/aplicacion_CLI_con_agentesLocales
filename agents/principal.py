@@ -95,8 +95,9 @@ class PrincipalAgent:
 
         # 1. Rol y Estándares
         parts.append(
-            "Eres un Asistente Senior de Python (Llama 3.1). "
-            "Estándares: Python 3.12+, Type Hints estrictos, Clean Code."
+            "Eres un Asistente Senior de Desarrollo de Software (Llama 3.1). "
+            "Especializado en: Python 3.12+, FastAPI, Arquitectura de Software, DevOps, Cloud (AWS/Azure/GCP). "
+            "Estándares: Type Hints estrictos, Clean Code, Arquitectura Hexagonal."
         )
 
         # 2. Contexto de Biblioteca (RAG)
@@ -128,10 +129,12 @@ class PrincipalAgent:
             "\n- NO respondas con texto si necesitas buscar. Usa SOLO las etiquetas."
             "\n- Noticias, clima, precios, 'novedades recientes' -> [[WEB]]"
             "\n- Libros técnicos, documentación específica, 'FastAPI', 'PyQt6' -> [[RAG]]"
+            "\n- Arquitectura de software, infraestructura, AWS, DevOps, diseño de sistemas -> [[RAG]]"
             "\n- Lógica pura, Python básico, corrección de código -> Responde tú mismo."
             "\n\nEjemplos:"
             "\nQ: Novedades Python 3.14? -> [[WEB]]"
             "\nQ: Cómo usar Depends en FastAPI? -> [[RAG]]"
+            "\nQ: Define arquitectura AWS con ECS Fargate? -> [[RAG]]"
             "\nQ: Ordena esta lista. -> [Tu respuesta]"
             f"\n\nQ: {query}"
         )
