@@ -518,6 +518,57 @@ class Orchestrator:
             },
         }
 
+    def _load_recent_memories(self, limit: int = 3) -> str:
+        """Carga los últimos N Soul Packages en orden cronológico inverso.
+
+        Args:
+            limit: Número máximo de Soul Packages a cargar
+
+        Returns:
+            String con los Soul Packages concatenados
+        """
+        import json
+        import os
+
+        temporal_bridge = os.path.join(self.storage.brain_path, "temporal_bridge")
+
+        if not os.path.exists(temporal_bridge):
+            return ""
+
+        # Obtener todos los archivos JSON (soul_metadata)
+        files = sorted(
+            [f for f in os.listdir(temporal_bridge) if f.endswith(".json")],
+            reverse=True  # Más reciente primero
+        )[:limit]
+
+        memories = []
+        for file in files:
+            try:
+                with open(os.path.join(temporal_bridge, file), encoding='utf-8') as f:
+                    data = json.load(f)
+
+                    # Extraer información relevante
+                    identity = data.get("identity", {})
+                    compressed_memory = data.get("compressed_memory", [])
+                    tags = data.get("tags", [])
+                    timestamp = data.get("last_mitosis", "desconocido")
+
+                    # Formatear memoria
+                    memory_text = f"[MITOSIS {timestamp[:10]}]"
+                    if identity.get("proyecto_activo"):
+                        memory_text += f"\nProyecto: {identity['proyecto_activo']}"
+                    if compressed_memory:
+                        memory_text += f"\nAprendizajes: {' | '.join(compressed_memory[:3])}"
+                    if tags:
+                        memory_text += f"\nTags: {', '.join(tags[:5])}"
+
+                    memories.append(memory_text)
+            except Exception:
+                # Ignorar archivos corruptos
+                continue
+
+        return "\n---\n".join(memories) if memories else ""
+
     def _wake_up(self) -> None:
         """Protocolo de despertar: carga Soul Package de sesión anterior + experiencia previa."""
         # Intentar cargar metadata comprimido primero (más eficiente)
@@ -528,31 +579,11 @@ class Orchestrator:
             metadata_text = self._format_metadata_for_context(metadata)
             context_parts = [f"[IDENTIDAD ACTUAL]\n{metadata_text}"]
 
-            # 🌿 TIER 2: Buscar experiencia relevante en Soul Packages anteriores
-            if self.noosphere:
-                try:
-                    # Buscar usando pending_tasks como query
-                    pending_tasks = metadata.get("pending_tasks", [])
-                    if pending_tasks:
-                        past_souls = self.noosphere.query_experience(
-                            query=pending_tasks,
-                            top_k=1,  # Solo el MÁS relevante
-                            min_similarity=0.3
-                        )
-
-                        if past_souls:
-                            soul = past_souls[0]
-                            # Comprimir experiencia previa a máximo 300 tokens
-                            compressed_memory = " ".join(soul.get("compressed_memory", []))[:300]
-                            timestamp = soul.get("timestamp", "desconocido")
-                            similarity = soul.get("similarity_score", 0.0)
-
-                            context_parts.append(
-                                f"\n[EXPERIENCIA PREVIA - Mitosis {timestamp[:10]} | Similitud: {similarity:.2f}]\n{compressed_memory}"
-                            )
-                except Exception as e:
-                    # No fallar si Noosphere tiene problemas
-                    print(f"⚠️  Error en búsqueda Noosphere: {e}")
+            # 🌿 TIER 2: Cargar experiencia reciente (últimos 3 Soul Packages)
+            recent_memories = self._load_recent_memories(limit=3)
+            if recent_memories:
+                context_parts.append(f"\n[EXPERIENCIA PREVIA - Últimas Sesiones]\n{recent_memories}")
+                print("🧠 Memoria: Cargados últimos 3 Soul Packages")
 
             # Inyectar contexto completo
             full_context = "\n".join(context_parts)
