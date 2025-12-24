@@ -207,19 +207,13 @@ class Orchestrator:
         # Contar TODO el contexto que Llama realmente procesa, no solo la última respuesta
         full_context_tokens = 0
 
-        # 1. Contar historial completo
+        # 1. Contar historial completo (ya incluye la respuesta RAG si se usó)
         for msg in self.history:
             full_context_tokens += self._estimate_tokens(msg["content"])
 
         # 2. Contar contexto aprendido si existe
         if learned_context:
             full_context_tokens += self._estimate_tokens(learned_context)
-
-        # 3. Contar respuesta RAG si se usó (puede ser masiva)
-        # rag_result es una tupla (response, source), contar solo el response
-        if rag_result:
-            rag_response, _ = rag_result
-            full_context_tokens += self._estimate_tokens(rag_response)
 
         # Actualizar token_count con el contexto REAL
         self.token_count = full_context_tokens
