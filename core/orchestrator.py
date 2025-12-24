@@ -518,8 +518,44 @@ class Orchestrator:
             },
         }
 
-    def _load_recent_memories(self, limit: int = 3) -> str:
-        """Carga los últimos N Soul Packages en orden cronológico inverso.
+    def _load_knowledge_shards(self) -> str:
+        """Carga todos los Knowledge Shards (Memoria de Largo Plazo).
+
+        Returns:
+            String con los Shards consolidados concatenados
+        """
+        import os
+
+        shards_path = os.path.join(self.storage.brain_path, "parallel_shards")
+
+        if not os.path.exists(shards_path):
+            return ""
+
+        # Obtener todos los archivos Markdown
+        shard_files = sorted(
+            [f for f in os.listdir(shards_path) if f.endswith(".md")]
+        )
+
+        if not shard_files:
+            return ""
+
+        shards_content = []
+        for file in shard_files:
+            try:
+                with open(os.path.join(shards_path, file), encoding='utf-8') as f:
+                    content = f.read()
+                    # Extraer solo las primeras 1000 caracteres para no saturar contexto
+                    shard_summary = content[:1000]
+                    shard_name = file.replace(".md", "").replace("_", " ").title()
+                    shards_content.append(f"[SHARD: {shard_name}]\n{shard_summary}")
+            except Exception:
+                # Ignorar archivos corruptos
+                continue
+
+        return "\n---\n".join(shards_content) if shards_content else ""
+
+    def _load_recent_memories(self, limit: int = 2) -> str:
+        """Carga los últimos N Soul Packages (Memoria de Corto Plazo).
 
         Args:
             limit: Número máximo de Soul Packages a cargar
@@ -579,11 +615,26 @@ class Orchestrator:
             metadata_text = self._format_metadata_for_context(metadata)
             context_parts = [f"[IDENTIDAD ACTUAL]\n{metadata_text}"]
 
-            # 🌿 TIER 2: Cargar experiencia reciente (últimos 3 Soul Packages)
-            recent_memories = self._load_recent_memories(limit=3)
+            # 🌿 TIER 2: Cargar Knowledge Shards (Memoria de Largo Plazo)
+            knowledge_shards = self._load_knowledge_shards()
+            shards_count = len([s for s in knowledge_shards.split("[SHARD:") if s.strip()])
+            if knowledge_shards:
+                context_parts.append(f"\n[CONOCIMIENTO CONSOLIDADO - Shards]\n{knowledge_shards}")
+
+            # 🌿 TIER 3: Cargar experiencia reciente (últimos 2 Soul Packages)
+            recent_memories = self._load_recent_memories(limit=2)
+            souls_count = len([m for m in recent_memories.split("[MITOSIS") if m.strip()])
             if recent_memories:
-                context_parts.append(f"\n[EXPERIENCIA PREVIA - Últimas Sesiones]\n{recent_memories}")
-                print("🧠 Memoria: Cargados últimos 3 Soul Packages")
+                context_parts.append(f"\n[EXPERIENCIA RECIENTE - Últimas Sesiones]\n{recent_memories}")
+
+            # Mensaje de confirmación
+            if knowledge_shards or recent_memories:
+                memory_msg = "🧠 Memoria:"
+                if shards_count > 0:
+                    memory_msg += f" {shards_count} Shard(s) de Conocimiento"
+                if souls_count > 0:
+                    memory_msg += f" + {souls_count} Soul Package(s) reciente(s)"
+                print(memory_msg)
 
             # Inyectar contexto completo
             full_context = "\n".join(context_parts)
