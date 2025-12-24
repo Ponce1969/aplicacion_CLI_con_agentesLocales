@@ -34,9 +34,8 @@ def print_executor(message: str, show_model: bool = True) -> None:
 
 
 def print_rag(message: str, source: str = "gemini") -> None:
-    """Imprime respuesta del RAG."""
-    source_name = "Gemini RAG" if source == "gemini" else "Kimi-k2"
-    console.print(f"\n📚 [blue]RAG ({source_name})[/blue]")
+    """Imprime respuesta de la API."""
+    console.print("\n📚 [blue]Respuesta de la API[/blue]")
     console.print(f"[blue]{message}[/blue]")
 
 
