@@ -175,4 +175,26 @@ Este proyecto está bajo la licencia MIT. Ver [LICENSE](LICENSE) para más detal
 
 ---
 
+📁 Estructura Final Organizada
+agente/
+├── tests/                          # ✅ Tests organizados
+│   ├── test_rag_client_refactor.py
+│   ├── test_rag_gemini.py
+│   └── test_session_fix.py
+├── core/                           # Código fuente
+│   ├── orchestrator.py
+│   ├── storage.py
+│   └── rag_client.py
+├── agents/
+│   ├── principal.py
+│   └── executor.py
+├── brain/                          # Memoria del sistema
+│   ├── temporal_bridge/
+│   └── metabolism/
+└── cli.py                          # Punto de entrada
+
+
+
+---
+
 *Actualizado: 21/12/2025*
