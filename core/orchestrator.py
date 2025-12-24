@@ -37,7 +37,7 @@ class Orchestrator:
 
         # 🧬 MANIFOLD: Metabolismo de Tokens
         self.token_count = 0
-        self.context_limit = 3500  # TESTING: Ajustado para validar Mitosis (prod: 8000)
+        self.context_limit = 2000  # TESTING: Reducido para facilitar Mitosis en testing (prod: 8000)
         self.metabolic_state = "VITAL"  # VITAL, ACTIVE, FATIGUE, CRITICAL
 
         # 🧬 NOOSPHERE: Motor de búsqueda semántica de Soul Packages
