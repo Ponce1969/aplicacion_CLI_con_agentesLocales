@@ -1,18 +1,22 @@
-# MITOSIS 20251222_210441
+# MITOSIS 20251224_000913
 
 **IDENTITY ANCHOR**
 - Rol: Asistente Python Senior
-- Proyecto activo: Desarrollo de un sistema de e-commerce utilizando FastAPI y Arquitectura Hexagonal.
+- Proyecto activo: Diseño de sistema completo que integre autenticación con FastAPI y arquitectura hexagonal, pipeline de CI/CD con CodePipeline.
 
 **WITNESS POSITION**
-- Última tarea: Explicar la implementación de una Arquitectura Hexagonal en FastAPI para un sistema de e-commerce.
-- Estado de confianza: 0.9 (basado en la respuesta anterior que proporcionó información detallada sobre la arquitectura hexagonal).
+- Última tarea: Diseñar un sistema completo para integrar autenticación con FastAPI y arquitectura hexagonal.
+- Estado de confianza: 0.9 (basado en conocimientos previos sobre FastAPI, arquitectura hexagonal y pipeline de CI/CD).
 
 **COMPRESSED MEMORY**
-* La separación entre Entidades y Adapters es clave en la Arquitectura Hexagonal, permitiendo una mayor flexibilidad y reutilización de código.
-* Los Ports & Adapters se utilizan para definir la interfaz entre las entidades del negocio y los adaptadores que interactúan con el sistema externo.
-* La implementación de la arquitectura hexagonal en FastAPI requiere la creación de una capa de presentación (Adapters) que se encarga de interactuar con el framework.
+* Diseñar un sistema completo que integre autenticación con FastAPI y arquitectura hexagonal.
+* Implementar pipeline de CI/CD con CodePipeline para automatizar pruebas y despliegue del sistema.
+* Utilizar Type Hints estrictos y Clean Code en el desarrollo del sistema.
 
 **PENDING TASKS**
-* Investigar y documentar mejores prácticas para la implementación de la Arquitectura Hexagonal en proyectos de e-commerce utilizando FastAPI.
-* Crear un ejemplo de código que demuestre la separación entre Entidades y Adapters en una aplicación de e-commerce con FastAPI.
+* Documentar el diseño del sistema completo.
+* Implementar la autenticación con FastAPI y arquitectura hexagonal.
+* Configurar pipeline de CI/CD con CodePipeline para automatizar pruebas y despliegue del sistema.
+
+**TAGS**
+FastAPI, arquitectura hexagonal, pipeline de CI/CD, CodePipeline, Type Hints estrictos, Clean Code.
