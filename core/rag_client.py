@@ -17,17 +17,17 @@ from core.exceptions import (
 class RAGClient:
     """Cliente simplificado para el Gateway LLM."""
 
-    def __init__(self, base_url: str = RAG_BASE_URL, api_key: str = RAG_API_KEY) -> None:
+    def __init__(
+        self, base_url: str = RAG_BASE_URL, api_key: str = RAG_API_KEY
+    ) -> None:
         self.base_url = base_url.rstrip("/")
         self.client = httpx.Client(
             base_url=self.base_url,
             timeout=RAG_TIMEOUT,
-            headers={"X-API-Key": api_key} if api_key else None
+            headers={"X-API-Key": api_key} if api_key else None,
         )
 
-    def query(
-        self, question: str, mode: str = "auto", session_id: int = 0
-    ) -> str:
+    def query(self, question: str, mode: str = "auto", session_id: int = 0) -> str:
         """
         Consulta al endpoint /api/internal/llm-gateway.
 
@@ -54,16 +54,9 @@ class RAGClient:
             RAGPartialResponse: Respuesta parcial (206)
         """
         try:
-            payload = {
-                "query": question,
-                "mode": mode,
-                "session_id": session_id
-            }
+            payload = {"query": question, "mode": mode, "session_id": session_id}
 
-            response = self.client.post(
-                "/api/internal/llm-gateway",
-                json=payload
-            )
+            response = self.client.post("/api/internal/llm-gateway", json=payload)
 
             # Éxito (200)
             if response.status_code == 200:
@@ -77,12 +70,14 @@ class RAGClient:
                     if "Voy a buscar información actualizada sobre esto" in answer:
                         raise RAGPartialResponse(
                             "RAG devolvió respuesta placeholder (cache corrupto)",
-                            response=answer
+                            response=answer,
                         )
                     return answer
 
                 # answer no es string válido
-                raise RAGPartialResponse("Respuesta sin contenido válido", response=None)
+                raise RAGPartialResponse(
+                    "Respuesta sin contenido válido", response=None
+                )
 
             # Caso especial: Error 500 con "Sesión no encontrada"
             # Comportamiento actual: retry automático con session_id=0
@@ -94,8 +89,7 @@ class RAGClient:
                 and session_id != 0
             ):
                 raise RAGSessionNotFound(
-                    "Sesión no encontrada en el servidor",
-                    session_id=session_id
+                    "Sesión no encontrada en el servidor", session_id=session_id
                 )
 
             # Mapeo HTTP → Excepciones de dominio
@@ -106,9 +100,7 @@ class RAGClient:
                 response_json = None
 
             raise map_http_status_to_exception(
-                response.status_code,
-                response.text,
-                response_json
+                response.status_code, response.text, response_json
             )
 
         except (RAGPartialResponse, RAGSessionNotFound):
@@ -179,4 +171,3 @@ class RAGClient:
         """Limpieza automática."""
         if hasattr(self, "client"):
             self.client.close()
-

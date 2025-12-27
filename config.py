@@ -34,29 +34,60 @@ CACHE_SIMILARITY_THRESHOLD: Final[float] = 0.85  # Similitud para cache hit
 # Contexto de backend (patrones conocidos)
 BACKEND_PATTERNS = {
     "arquitectura_hexagonal": [
-        "domain", "application", "infrastructure", "adapters",
-        "ports", "use_cases", "entities", "repositories"
+        "domain",
+        "application",
+        "infrastructure",
+        "adapters",
+        "ports",
+        "use_cases",
+        "entities",
+        "repositories",
     ],
     "fastapi": [
-        "FastAPI", "APIRouter", "Depends", "HTTPException",
-        "status", "Response", "Request", "BackgroundTasks"
+        "FastAPI",
+        "APIRouter",
+        "Depends",
+        "HTTPException",
+        "status",
+        "Response",
+        "Request",
+        "BackgroundTasks",
     ],
     "postgresql": [
-        "asyncpg", "sqlalchemy", "alembic", "migrations",
-        "models", "schemas", "crud"
+        "asyncpg",
+        "sqlalchemy",
+        "alembic",
+        "migrations",
+        "models",
+        "schemas",
+        "crud",
     ],
     "docker": [
-        "Dockerfile", "docker-compose.yml", "volumes",
-        "networks", "services", "build", "image"
+        "Dockerfile",
+        "docker-compose.yml",
+        "volumes",
+        "networks",
+        "services",
+        "build",
+        "image",
     ],
     "dependency_injection": [
-        "Depends", "get_db", "get_service", "Container",
-        "inject", "provider"
+        "Depends",
+        "get_db",
+        "get_service",
+        "Container",
+        "inject",
+        "provider",
     ],
     "typing": [
-        "mypy", "ruff", "type hints", "Protocol",
-        "TypeVar", "Generic", "Literal"
-    ]
+        "mypy",
+        "ruff",
+        "type hints",
+        "Protocol",
+        "TypeVar",
+        "Generic",
+        "Literal",
+    ],
 }
 
 # Base de conocimiento indexada (RAG)
@@ -84,5 +115,5 @@ COLORS = {
     "error": "red bold",
     "success": "green bold",
     "info": "blue",
-    "warning": "yellow"
+    "warning": "yellow",
 }

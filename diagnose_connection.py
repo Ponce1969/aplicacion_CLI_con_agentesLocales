@@ -17,10 +17,8 @@ print(f"API Key presente: {'Sí' if API_KEY else 'No'}")
 if API_KEY:
     print(f"API Key (primeros 5): {API_KEY[:5]}...")
 
-headers = {
-    "X-API-Key": API_KEY,
-    "Content-Type": "application/json"
-}
+headers = {"X-API-Key": API_KEY, "Content-Type": "application/json"}
+
 
 def test_endpoint(mode: str, query: str) -> None:
     print(f"\nProbando modo: {mode.upper()}")
@@ -29,7 +27,7 @@ def test_endpoint(mode: str, query: str) -> None:
     payload = {
         "query": query,
         "mode": mode,
-        "session_id": int(time.time()) # ID único para evitar cache
+        "session_id": int(time.time()),  # ID único para evitar cache
     }
 
     try:
@@ -38,7 +36,7 @@ def test_endpoint(mode: str, query: str) -> None:
             f"{BASE_URL}/api/internal/llm-gateway",
             json=payload,
             headers=headers,
-            timeout=60.0
+            timeout=60.0,
         )
         duration = time.time() - start
 
@@ -61,6 +59,7 @@ def test_endpoint(mode: str, query: str) -> None:
 
     except Exception as e:
         print(f"❌ Excepción: {e}")
+
 
 # 1. Probar Modo Kimi (Chat General)
 test_endpoint("kimi", "¿Cual es la capital de Francia? Responde brevemente.")

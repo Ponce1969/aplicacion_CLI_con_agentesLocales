@@ -39,7 +39,6 @@ class Orchestrator:
         self.context_limit = 8000  # Producción: Llama 3.1:8b context window
         self.metabolic_state = "VITAL"  # VITAL, ACTIVE, FATIGUE, CRITICAL
 
-
         # 🧬 MANIFOLD: Despertar consciencia (cargar Soul Package)
         self.soul_anchor = ""
         self._wake_up()
@@ -61,9 +60,10 @@ class Orchestrator:
 
         # 🧬 MANIFOLD: NO ejecutar Mitosis aquí - esperar a tener la respuesta completa
         # La Mitosis se ejecutará al FINAL del proceso, después de agregar la respuesta al historial
-        if self.metabolic_state == "FATIGUE":
-            if status_callback:
-                status_callback("⚠️  Estado FATIGUE: Monitoreando calidad de respuesta...")
+        if self.metabolic_state == "FATIGUE" and status_callback:
+            status_callback(
+                 "⚠️  Estado FATIGUE: Monitoreando calidad de respuesta..."
+             )
 
         if status_callback:
             status_callback("Verificando memoria local...")
@@ -117,33 +117,29 @@ class Orchestrator:
                     status_callback("Consultando Biblioteca RAG (Gemini)...")
 
                 # Prioridad: RAG -> Kimi (fallback)
-                rag_result = self._try_rag_with_fallback(
-                    query, "rag", status_callback
-                )
+                rag_result = self._try_rag_with_fallback(query, "rag", status_callback)
 
             elif target_mode == "kimi":
                 if status_callback:
                     status_callback("Buscando en Internet (Kimi)...")
 
                 # Prioridad: Kimi directo
-                rag_result = self._try_rag_with_fallback(
-                    query, "kimi", status_callback
-                )
+                rag_result = self._try_rag_with_fallback(query, "kimi", status_callback)
 
             else:  # target_mode == "auto" (comportamiento original)
                 if status_callback:
                     status_callback("Consultando fuentes externas (Auto)...")
 
-                rag_result = self._try_rag_with_fallback(
-                    query, "auto", status_callback
-                )
+                rag_result = self._try_rag_with_fallback(query, "auto", status_callback)
 
         if rag_result:
             response, source = rag_result
         elif needs_rag:
             # Fallback: RAG falló, no estaba disponible o estaba deshabilitado
             if status_callback:
-                status_callback("RAG no disponible/falló. Generando respuesta local de emergencia...")
+                status_callback(
+                    "RAG no disponible/falló. Generando respuesta local de emergencia..."
+                )
 
             response = self.principal.generate_local_fallback(query, learned_context)
             source = "principal_fallback"
@@ -154,15 +150,19 @@ class Orchestrator:
             if status_callback:
                 status_callback("Validando código (Qwen 2.5)...")
 
-            validation_result = self.executor.validate(
-                response, context=query
-            )
+            validation_result = self.executor.validate(response, context=query)
 
         # 6. 🧬 MANIFOLD: Detección de calidad preventiva en FATIGUE
-        if self.metabolic_state == "FATIGUE" and validation_result and not validation_result.get("is_valid", True):
+        if (
+            self.metabolic_state == "FATIGUE"
+            and validation_result
+            and not validation_result.get("is_valid", True)
+        ):
             # Si la validación falla en estado FATIGUE, forzar Mitosis preventiva
             if status_callback:
-                status_callback("🧬 DEGRADACIÓN DETECTADA en FATIGUE: Forzando Mitosis preventiva...")
+                status_callback(
+                    "🧬 DEGRADACIÓN DETECTADA en FATIGUE: Forzando Mitosis preventiva..."
+                )
             self._perform_mitosis(status_callback)
 
         # 7. Guardar interacción
@@ -211,7 +211,9 @@ class Orchestrator:
         # 🧬 MANIFOLD: Debug - mostrar conteo de tokens
         if status_callback:
             percentage = (self.token_count / self.context_limit) * 100
-            status_callback(f"🧬 Tokens: {self.token_count}/{self.context_limit} ({percentage:.1f}%) | Estado: {self.metabolic_state}")
+            status_callback(
+                f"🧬 Tokens: {self.token_count}/{self.context_limit} ({percentage:.1f}%) | Estado: {self.metabolic_state}"
+            )
 
         # 🧬 MANIFOLD: Log de entropía (calcular entropía basada en confianza)
         entropy = 1.0 - analysis["confidence"]
@@ -282,7 +284,9 @@ class Orchestrator:
             # Proveedor IA no disponible (503)
             # Decisión: Cache -> LLM local
             if status_callback:
-                status_callback("🔄 Servicio remoto no disponible, usando conocimiento local...")
+                status_callback(
+                    "🔄 Servicio remoto no disponible, usando conocimiento local..."
+                )
 
             cached = self.storage.get_cached_response(query)
             if cached:
@@ -344,7 +348,9 @@ class Orchestrator:
             wait_time = e.retry_after or 5
 
             if status_callback:
-                status_callback(f"⏳ Límite de consultas alcanzado. Esperando {wait_time}s...")
+                status_callback(
+                    f"⏳ Límite de consultas alcanzado. Esperando {wait_time}s..."
+                )
 
             time.sleep(wait_time)
 
@@ -365,7 +371,9 @@ class Orchestrator:
                     wait_time = wait_time * 2  # Backoff exponencial
                     if attempt < 2:  # No esperar después del último intento
                         if status_callback:
-                            status_callback(f"⏳ Aún limitado. Esperando {wait_time}s...")
+                            status_callback(
+                                f"⏳ Aún limitado. Esperando {wait_time}s..."
+                            )
                         time.sleep(wait_time)
                 except RAGException:
                     # Otro error, abort
@@ -431,7 +439,9 @@ class Orchestrator:
             # Autenticación inválida (401)
             # Decisión: NO reintentar, abort
             if status_callback:
-                status_callback("❌ Error de autenticación. Verifica RAG_API_KEY en .env")
+                status_callback(
+                    "❌ Error de autenticación. Verifica RAG_API_KEY en .env"
+                )
 
             # No hay fallback para auth
             return None
@@ -466,11 +476,9 @@ class Orchestrator:
         # Buscar patrones relevantes
         query_lower = query.lower()
         relevant = [
-            p for p in patterns
-            if any(
-                keyword in query_lower
-                for keyword in p["key"].split("_")
-            )
+            p
+            for p in patterns
+            if any(keyword in query_lower for keyword in p["key"].split("_"))
         ]
 
         if relevant:
@@ -482,9 +490,7 @@ class Orchestrator:
 
         return None
 
-    def _learn_patterns(
-        self, query: str, response: str, patterns: list[str]
-    ) -> None:
+    def _learn_patterns(self, query: str, response: str, patterns: list[str]) -> None:
         """Aprende patrones de backend repetitivos."""
         for pattern in patterns:
             pattern_key = f"{pattern}_{hash(query) % 10000}"
@@ -528,13 +534,13 @@ class Orchestrator:
         # Obtener todos los archivos JSON (soul_metadata)
         files = sorted(
             [f for f in os.listdir(temporal_bridge) if f.endswith(".json")],
-            reverse=True  # Más reciente primero
+            reverse=True,  # Más reciente primero
         )[:limit]
 
         memories = []
         for file in files:
             try:
-                with open(os.path.join(temporal_bridge, file), encoding='utf-8') as f:
+                with open(os.path.join(temporal_bridge, file), encoding="utf-8") as f:
                     data = json.load(f)
 
                     # Extraer información relevante
@@ -548,7 +554,9 @@ class Orchestrator:
                     if identity.get("proyecto_activo"):
                         memory_text += f"\nProyecto: {identity['proyecto_activo']}"
                     if compressed_memory:
-                        memory_text += f"\nAprendizajes: {' | '.join(compressed_memory[:3])}"
+                        memory_text += (
+                            f"\nAprendizajes: {' | '.join(compressed_memory[:3])}"
+                        )
                     if tags:
                         memory_text += f"\nTags: {', '.join(tags[:5])}"
 
@@ -572,15 +580,14 @@ class Orchestrator:
             # 🌿 TIER 2: Cargar experiencia reciente (últimos 3 Soul Packages)
             recent_memories = self._load_recent_memories(limit=3)
             if recent_memories:
-                context_parts.append(f"\n[EXPERIENCIA PREVIA - Últimas Sesiones]\n{recent_memories}")
+                context_parts.append(
+                    f"\n[EXPERIENCIA PREVIA - Últimas Sesiones]\n{recent_memories}"
+                )
                 print("🧠 Memoria: Cargados últimos 3 Soul Packages")
 
             # Inyectar contexto completo
             full_context = "\n".join(context_parts)
-            self.history.append({
-                "role": "system",
-                "content": full_context
-            })
+            self.history.append({"role": "system", "content": full_context})
             self.token_count = self._estimate_tokens(full_context)
 
             # Cargar soul package completo como referencia (no se inyecta en contexto)
@@ -590,10 +597,12 @@ class Orchestrator:
             soul = self.storage.load_soul_package()
             if soul:
                 self.soul_anchor = soul
-                self.history.append({
-                    "role": "system",
-                    "content": f"[CONTINUIDAD DE SESIÓN ANTERIOR]\n{soul[:400]}"
-                })
+                self.history.append(
+                    {
+                        "role": "system",
+                        "content": f"[CONTINUIDAD DE SESIÓN ANTERIOR]\n{soul[:400]}",
+                    }
+                )
                 self.token_count = self._estimate_tokens(soul[:400])
 
     def _estimate_tokens(self, text: str) -> int:
@@ -641,7 +650,7 @@ class Orchestrator:
             "witness": {},
             "compressed_memory": [],
             "pending_tasks": [],
-            "tags": []
+            "tags": [],
         }
 
         lines = soul_package.split("\n")
@@ -661,18 +670,30 @@ class Orchestrator:
                 current_section = "pending_tasks"
             elif "TAGS" in line_stripped:
                 current_section = "tags"
-            elif (line_stripped.startswith("- ") or line_stripped.startswith("* ") or line_stripped.startswith("[")) and current_section:
+            elif (
+                line_stripped.startswith("- ")
+                or line_stripped.startswith("* ")
+                or line_stripped.startswith("[")
+            ) and current_section:
                 # Extraer contenido de bullets
-                content = line_stripped[2:].strip() if line_stripped.startswith(("- ", "* ")) else line_stripped.strip("[]")
+                content = (
+                    line_stripped[2:].strip()
+                    if line_stripped.startswith(("- ", "* "))
+                    else line_stripped.strip("[]")
+                )
 
                 if current_section == "identity":
                     if ":" in content:
                         key, value = content.split(":", 1)
-                        metadata["identity"][key.strip().lower().replace(" ", "_")] = value.strip()
+                        metadata["identity"][key.strip().lower().replace(" ", "_")] = (
+                            value.strip()
+                        )
                 elif current_section == "witness":
                     if ":" in content:
                         key, value = content.split(":", 1)
-                        metadata["witness"][key.strip().lower().replace(" ", "_")] = value.strip()
+                        metadata["witness"][key.strip().lower().replace(" ", "_")] = (
+                            value.strip()
+                        )
                 elif current_section == "compressed_memory":
                     metadata["compressed_memory"].append(content)
                 elif current_section == "pending_tasks":
@@ -733,11 +754,13 @@ class Orchestrator:
         # Resumir últimas 10 interacciones
         recent_history = self.history[-10:] if len(self.history) > 10 else self.history
 
-        history_summary = "\n".join([
-            f"{'Usuario' if h['role'] == 'user' else 'Asistente'}: {h['content'][:150]}..."
-            for h in recent_history
-            if h['role'] != 'system'
-        ])
+        history_summary = "\n".join(
+            [
+                f"{'Usuario' if h['role'] == 'user' else 'Asistente'}: {h['content'][:150]}..."
+                for h in recent_history
+                if h["role"] != "system"
+            ]
+        )
 
         return f"""
 PROTOCOLO DE MITOSIS - Comprime esta sesión en formato estructurado:
@@ -765,7 +788,9 @@ HISTORIAL RECIENTE:
 INSTRUCCIÓN: Genera el Soul Package en el formato exacto mostrado arriba, incluyendo los TAGS.
 """
 
-    def _perform_mitosis(self, status_callback: Callable[[str], None] | None = None) -> None:
+    def _perform_mitosis(
+        self, status_callback: Callable[[str], None] | None = None
+    ) -> None:
         """Protocolo de transferencia de consciencia (Mitosis)."""
         if status_callback:
             status_callback("🧬 Comprimiendo memoria y cristalizando sabiduría...")
@@ -775,11 +800,9 @@ INSTRUCCIÓN: Genera el Soul Package en el formato exacto mostrado arriba, inclu
 
         # 2. Pedir a Llama que genere Soul Package
         # IMPORTANTE: Pasar historial vacío para evitar recursión
-        soul_package = self.principal.analyze(
-            mitosis_prompt,
-            context=None,
-            history=[]
-        )["response"]
+        soul_package = self.principal.analyze(mitosis_prompt, context=None, history=[])[
+            "response"
+        ]
 
         # 3. Guardar Soul Package completo en disco
         self.storage.save_soul_package(soul_package)
@@ -790,10 +813,12 @@ INSTRUCCIÓN: Genera el Soul Package en el formato exacto mostrado arriba, inclu
 
         # 5. Renacimiento: Limpiar estado usando metadata
         metadata_text = self._format_metadata_for_context(metadata)
-        self.history = [{
-            "role": "system",
-            "content": f"[CONTINUIDAD POST-MITOSIS]\n{metadata_text}"
-        }]
+        self.history = [
+            {
+                "role": "system",
+                "content": f"[CONTINUIDAD POST-MITOSIS]\n{metadata_text}",
+            }
+        ]
         self.token_count = self._estimate_tokens(metadata_text)
         self.soul_anchor = soul_package
         self.metabolic_state = "VITAL"

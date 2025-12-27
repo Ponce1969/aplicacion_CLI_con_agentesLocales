@@ -12,9 +12,7 @@ class ExecutorAgent:
 
     def __init__(self) -> None:
         self.model = EXECUTOR_MODEL
-        self.client = httpx.Client(
-            base_url=OLLAMA_BASE_URL, timeout=OLLAMA_TIMEOUT
-        )
+        self.client = httpx.Client(base_url=OLLAMA_BASE_URL, timeout=OLLAMA_TIMEOUT)
 
     def validate(self, code: str, context: str = "") -> dict[str, Any]:
         """
@@ -97,12 +95,8 @@ class ExecutorAgent:
         ]
 
         response_lower = response.lower()
-        positive_count = sum(
-            1 for ind in positive_indicators if ind in response_lower
-        )
-        negative_count = sum(
-            1 for ind in negative_indicators if ind in response_lower
-        )
+        positive_count = sum(1 for ind in positive_indicators if ind in response_lower)
+        negative_count = sum(1 for ind in negative_indicators if ind in response_lower)
 
         return positive_count > negative_count
 

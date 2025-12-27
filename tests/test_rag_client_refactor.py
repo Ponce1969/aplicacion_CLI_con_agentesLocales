@@ -49,4 +49,6 @@ if __name__ == "__main__":
     test_exceptions_are_importable()
 
     print("\n✅ Todas las pruebas básicas pasaron")
-    print("⚠️  Nota: El comportamiento real se probará cuando orchestrator use las excepciones")
+    print(
+        "⚠️  Nota: El comportamiento real se probará cuando orchestrator use las excepciones"
+    )

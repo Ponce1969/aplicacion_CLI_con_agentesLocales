@@ -39,7 +39,9 @@ def orchestrator() -> Orchestrator:
 def test_rag_unavailable_uses_cache(orchestrator: Orchestrator, mocker: Mock) -> None:
     """Test: RAGUnavailable → Cache → Retorna cached."""
     mocker.patch.object(
-        orchestrator.rag, "query_gemini_rag", side_effect=RAGUnavailable("Service unavailable")
+        orchestrator.rag,
+        "query_gemini_rag",
+        side_effect=RAGUnavailable("Service unavailable"),
     )
     mocker.patch.object(
         orchestrator.storage, "get_cached_response", return_value="cached answer"
@@ -57,7 +59,9 @@ def test_rag_unavailable_without_cache_uses_local_llm(
 ) -> None:
     """Test: RAGUnavailable sin cache → LLM local."""
     mocker.patch.object(
-        orchestrator.rag, "query_gemini_rag", side_effect=RAGUnavailable("Service unavailable")
+        orchestrator.rag,
+        "query_gemini_rag",
+        side_effect=RAGUnavailable("Service unavailable"),
     )
     mocker.patch.object(orchestrator.storage, "get_cached_response", return_value=None)
     mocker.patch.object(
@@ -228,7 +232,10 @@ def test_rag_session_not_found_retries_with_session_0(
     mocker.patch.object(
         orchestrator.rag,
         "query",
-        side_effect=[RAGSessionNotFound("Session not found"), "answer with new session"],
+        side_effect=[
+            RAGSessionNotFound("Session not found"),
+            "answer with new session",
+        ],
     )
 
     result = orchestrator._try_rag_with_fallback("test query", "rag")
@@ -289,7 +296,9 @@ def test_rag_invalid_request_returns_none_no_retry(
 ) -> None:
     """Test: RAGInvalidRequest → None (sin retry, sin fallback)."""
     mocker.patch.object(
-        orchestrator.rag, "query_gemini_rag", side_effect=RAGInvalidRequest("Invalid request")
+        orchestrator.rag,
+        "query_gemini_rag",
+        side_effect=RAGInvalidRequest("Invalid request"),
     )
 
     result = orchestrator._try_rag_with_fallback("test query", "rag")
@@ -302,7 +311,9 @@ def test_rag_internal_error_returns_none_no_retry(
 ) -> None:
     """Test: RAGInternalError → None (sin retry, sin fallback)."""
     mocker.patch.object(
-        orchestrator.rag, "query_gemini_rag", side_effect=RAGInternalError("Internal error")
+        orchestrator.rag,
+        "query_gemini_rag",
+        side_effect=RAGInternalError("Internal error"),
     )
 
     result = orchestrator._try_rag_with_fallback("test query", "rag")
@@ -320,7 +331,9 @@ def test_rag_connection_error_uses_cache_then_local(
 ) -> None:
     """Test: RAGConnectionError → Cache → LLM local."""
     mocker.patch.object(
-        orchestrator.rag, "query_gemini_rag", side_effect=RAGConnectionError("Connection error")
+        orchestrator.rag,
+        "query_gemini_rag",
+        side_effect=RAGConnectionError("Connection error"),
     )
     mocker.patch.object(
         orchestrator.storage, "get_cached_response", return_value="cached answer"
@@ -338,7 +351,9 @@ def test_rag_connection_error_no_cache_uses_local_llm(
 ) -> None:
     """Test: RAGConnectionError sin cache → LLM local."""
     mocker.patch.object(
-        orchestrator.rag, "query_gemini_rag", side_effect=RAGConnectionError("Connection error")
+        orchestrator.rag,
+        "query_gemini_rag",
+        side_effect=RAGConnectionError("Connection error"),
     )
     mocker.patch.object(orchestrator.storage, "get_cached_response", return_value=None)
     mocker.patch.object(

@@ -18,9 +18,7 @@ class PrincipalAgent:
 
     def __init__(self) -> None:
         self.model = PRINCIPAL_MODEL
-        self.client = httpx.Client(
-            base_url=OLLAMA_BASE_URL, timeout=OLLAMA_TIMEOUT
-        )
+        self.client = httpx.Client(base_url=OLLAMA_BASE_URL, timeout=OLLAMA_TIMEOUT)
         self.last_eval_count = 0  # 🧬 MANIFOLD: Tokens reales de Ollama
 
     def analyze(

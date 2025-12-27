@@ -5,6 +5,7 @@ from core.rag_client import RAGClient
 # Cargar variables
 load_dotenv()
 
+
 def verify_fixes() -> None:
     print("--- Verificando correcciones en RAGClient ---")
     client = RAGClient()
@@ -30,6 +31,7 @@ def verify_fixes() -> None:
         print("❌ Falló el filtrado: Se devolvió el placeholder.")
     else:
         print(f"✅ Se obtuvo una respuesta real: {response_rag[:50]}...")
+
 
 if __name__ == "__main__":
     verify_fixes()

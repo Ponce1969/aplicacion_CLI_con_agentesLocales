@@ -5,7 +5,19 @@
 [![Type Checked: mypy](https://img.shields.io/badge/type_checked-mypy-blue.svg)](http://mypy-lang.org/)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
-Un asistente de codificación inteligente que combina la velocidad de modelos locales (**Llama 3.1**, **Qwen 2.5**) con la autoridad de una base de conocimientos remota (**RAG Gemini**, **Web Kimi**).
+CLI inteligente que combina **modelos locales** (Llama 3.1, Qwen 2.5) con **API externa** de RAG (Gemini + Kimi). Cuando los modelos locales tienen dudas, consultan automáticamente la API para obtener información actualizada.
+
+> **🔗 Conexión Principal:** Este CLI se conecta a [este repositorio API](https://github.com/Ponce1969/agente_hibrido_texto_Kimi_rag_Gemini) que proporciona:
+> - 📚 **RAG con Gemini**: Base de conocimientos técnicos indexados
+> - 🌐 **Web Search con Kimi**: Búsqueda en tiempo real
+> - ⚡ **API REST**: Endpoint `/query` para consultas externas
+
+> **🎯 Características:**
+> - 🧠 **Llama 3.1**: Orquestador principal (decide cuándo usar RAG)
+> - ✅ **Qwen 2.5**: Validador de código (revisa y corrige respuestas)
+> - 🔄 **Routing automático**: Etiquetas `[[RAG]]` activan la API cuando es necesario
+> - 💬 **Modo interactivo** con memoria persistente
+> - 🔍 **Type-safe** con mypy --strict
 
 > **🎯 Características Principales:**
 > - 🚀 Respuestas rápidas con modelos locales (Ollama)
@@ -58,50 +70,92 @@ Dentro del modo interactivo, tienes herramientas de control:
 
 ## 🧠 Arquitectura del Sistema
 
-El cerebro del sistema es un **Orquestador** que decide dinámicamente quién debe responder:
+### 🔗 Flujo de Conexión CLI ↔ API
 
-1.  **Router (Llama 3.1:8b)**:
-    *   Analiza tu consulta.
-    *   Si es lógica pura o conocimiento básico → **Responde Localmente**.
-    *   Si detecta bibliotecas complejas (FastAPI, PyQt6) o necesidad de datos actuales → **Activa RAG/Web**.
-    *   *Nota: Ahora tiene "humildad". Si no sabe, prefiere preguntar al RAG que inventar.*
+```
+CLI (Local)                    API (Remota)
+├─ Llama 3.1 (Orquestador) ──→ ├─ Gemini RAG
+├─ Qwen 2.5 (Validador)       ├─ Kimi Web Search
+└─ Rich CLI (UI)              └─ FastAPI Server
+```
 
-2.  **Executor (Qwen 2.5:7b-instruct)**:
-    *   Actúa como **Senior Code Reviewer**.
-    *   Si Llama o RAG generan código, Qwen lo analiza, busca errores y lo valida antes de mostrártelo.
-    *   Garantiza que el código cumpla estándares modernos (Type Hints, PEP8).
+**1. Modelos Locales (CLI):**
+- **Llama 3.1**: Analiza tu consulta y decide si necesita información externa
+- **Qwen 2.5**: Valida y mejora el código generado
 
-3.  **Capa Remota (RAG + Web)**:
-    *   **Gemini RAG**: Consulta libros técnicos indexados (Fluent Python, Clean Code, etc.).
-    *   **Kimi Web**: Busca en internet información de tiempo real.
+**2. API Externa ([Repositorio API](https://github.com/Ponce1969/agente_hibrido_texto_Kimi_rag_Gemini)):**
+- **Endpoint**: `POST /query`
+- **Gemini**: Base de conocimientos técnicos (libros, documentación)
+- **Kimi**: Búsqueda web en tiempo real
+
+**3. Proceso de Decisión:**
+1. Llama 3.1 recibe tu pregunta
+2. Si detecta necesidad de RAG → agrega etiqueta `[[RAG]]`
+3. CLI envía consulta a la API
+4. API retorna información actualizada
+5. Qwen 2.5 valida la respuesta final
+
+### 🔄 Routing Inteligente
+
+El sistema usa **Action Tags** para decidir automáticamente:
+- `[[RAG]]` → Consulta base de conocimientos (Gemini)
+- `[[WEB]]` → Búsqueda web en tiempo real (Kimi)
+- Sin tags → Respuesta local con modelos
 
 ---
 
 ## 🛠️ Instalación y Requisitos
 
-Requiere **Python 3.12+** y acceso a un servidor Ollama local.
+### 📋 Requisitos Previos
 
-1.  **Dependencias**:
-    ```bash
-    pip install uv
-    uv sync
-    ```
+1. **Python 3.12+**
+2. **Ollama local** (para modelos Llama 3.1 y Qwen 2.5)
+3. **API RAG externa**: [Repositorio API](https://github.com/Ponce1969/agente_hibrido_texto_Kimi_rag_Gemini)
 
-2.  **Configuración (.env)**:
-    ```bash
-    # Copia el archivo de ejemplo
-    cp .env.example .env
-    
-    # Edita .env con tus valores
-    # RAG_BASE_URL: URL de tu servidor RAG
-    # RAG_API_KEY: Genera una con: uv run python scripts/generar_clave.py
-    # OLLAMA_BASE_URL: URL de Ollama (normalmente http://localhost:11434)
-    ```
+### 🔧 Instalación Completa
 
-3.  **Verificación**:
-    ```bash
-    uv run mypy .  # El código es 100% Type Safe
-    ```
+#### 1. Instalar CLI Local
+```bash
+# Clonar este repositorio
+git clone https://github.com/Ponce1969/aplicacion_CLI_con_agentesLocales.git
+cd aplicacion_CLI_con_agentesLocales
+
+# Instalar dependencias
+pip install uv
+uv sync
+```
+
+#### 2. Configurar API RAG (Servidor)
+```bash
+# Clonar y configurar el servidor API
+git clone https://github.com/Ponce1969/agente_hibrido_texto_Kimi_rag_Gemini.git
+cd agente_hibrido_texto_Kimi_rag_Gemini
+# Seguir instrucciones del README para configurar Gemini y Kimi
+```
+
+#### 3. Configurar Variables de Entorno
+```bash
+# Copiar archivo de ejemplo
+cp .env.example .env
+
+# Editar .env con tus valores
+# RAG_BASE_URL=http://localhost:8000  # URL del servidor API
+# RAG_API_KEY=tu_clave_api           # Generada con scripts/generar_clave.py
+# OLLAMA_BASE_URL=http://localhost:11434  # URL de Ollama
+```
+
+### ✅ Verificación de Instalación
+
+```bash
+# Verificar conexión con API
+uv run python cli.py "test connection"
+
+# Verificar modelos locales
+uv run python cli.py --check-models
+
+# Ejecutar tests
+uv run pytest
+```
 
 ---
 
@@ -160,18 +214,61 @@ Este proyecto está bajo la licencia MIT. Ver [LICENSE](LICENSE) para más detal
 
 ---
 
-## 🙏 Agradecimientos
+## � Repositorios Relacionados
 
-- [Ollama](https://ollama.ai/) - Modelos locales
-- [FastAPI](https://fastapi.tiangolo.com/) - Framework del servidor RAG
-- [Rich](https://rich.readthedocs.io/) - Terminal UI
-- [uv](https://github.com/astral-sh/uv) - Gestor de paquetes rápido
+- **CLI (Este repositorio)**: [aplicacion_CLI_con_agentesLocales](https://github.com/Ponce1969/aplicacion_CLI_con_agentesLocales)
+- **API RAG**: [agente_hibrido_texto_Kimi_rag_Gemini](https://github.com/Ponce1969/agente_hibrido_texto_Kimi_rag_Gemini)
 
 ---
 
-## 📞 Contacto
+## �🙏 Agradecimientos
 
-¿Preguntas o sugerencias? Abre un [Issue](https://github.com/tu-usuario/agente/issues) o inicia una [Discussion](https://github.com/tu-usuario/agente/discussions).
+- [Ollama](https://ollama.ai/) - Modelos locales (Llama 3.1, Qwen 2.5)
+- [FastAPI](https://fastapi.tiangolo.com/) - Framework del servidor RAG
+- [Rich](https://rich.readthedocs.io/) - Terminal UI
+- [uv](https://github.com/astral-sh/uv) - Gestor de paquetes rápido
+- [Google Gemini](https://gemini.google.com/) - RAG y procesamiento
+- [Kimi AI](https://kimi.moonshot.cn/) - Web search
+
+---
+
+## 📞 Contacto y Soporte
+
+¿Preguntas sobre la conexión CLI ↔ API? 
+
+- **Issues CLI**: [Crear issue aquí](https://github.com/Ponce1969/aplicacion_CLI_con_agentesLocales/issues)
+- **Issues API**: [Crear issue en API](https://github.com/Ponce1969/agente_hibrido_texto_Kimi_rag_Gemini/issues)
+- **Discussions**: [Discusiones CLI](https://github.com/Ponce1969/aplicacion_CLI_con_agentesLocales/discussions)
+
+---
+
+## 🚀 Guía Rápida para Clonar
+
+### Opción 1: Solo CLI (usa API externa)
+```bash
+git clone https://github.com/Ponce1969/aplicacion_CLI_con_agentesLocales.git
+cd aplicacion_CLI_con_agentesLocales
+pip install uv
+uv sync
+cp .env.example .env
+# Configurar RAG_BASE_URL con API pública
+```
+
+### Opción 2: CLI + API Local
+```bash
+# 1. API RAG
+git clone https://github.com/Ponce1969/agente_hibrido_texto_Kimi_rag_Gemini.git
+cd agente_hibrido_texto_Kimi_rag_Gemini
+# Configurar según README
+
+# 2. CLI
+git clone https://github.com/Ponce1969/aplicacion_CLI_con_agentesLocales.git
+cd aplicacion_CLI_con_agentesLocales
+pip install uv
+uv sync
+cp .env.example .env
+# Configurar RAG_BASE_URL=http://localhost:8000
+```
 
 ---
 

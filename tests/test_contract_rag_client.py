@@ -254,9 +254,12 @@ def test_query_timeout_exception_raises_rag_connection_error(
     rag_client: RAGClient,
 ) -> None:
     """Test: httpx.TimeoutException → lanza RAGConnectionError."""
-    with patch.object(
-        rag_client.client, "post", side_effect=httpx.TimeoutException("Timeout")
-    ), pytest.raises(RAGConnectionError) as exc_info:
+    with (
+        patch.object(
+            rag_client.client, "post", side_effect=httpx.TimeoutException("Timeout")
+        ),
+        pytest.raises(RAGConnectionError) as exc_info,
+    ):
         rag_client.query("test")
 
     assert "timeout" in str(exc_info.value).lower()
@@ -266,9 +269,14 @@ def test_query_connect_error_raises_rag_connection_error(
     rag_client: RAGClient,
 ) -> None:
     """Test: httpx.ConnectError → lanza RAGConnectionError."""
-    with patch.object(
-        rag_client.client, "post", side_effect=httpx.ConnectError("Connection refused")
-    ), pytest.raises(RAGConnectionError) as exc_info:
+    with (
+        patch.object(
+            rag_client.client,
+            "post",
+            side_effect=httpx.ConnectError("Connection refused"),
+        ),
+        pytest.raises(RAGConnectionError) as exc_info,
+    ):
         rag_client.query("test")
 
     assert "conectar" in str(exc_info.value).lower()
@@ -282,13 +290,16 @@ def test_query_http_status_error_raises_rag_connection_error(
     mock_response = Mock()
     mock_response.status_code = 999
 
-    with patch.object(
-        rag_client.client,
-        "post",
-        side_effect=httpx.HTTPStatusError(
-            "Error", request=mock_request, response=mock_response
+    with (
+        patch.object(
+            rag_client.client,
+            "post",
+            side_effect=httpx.HTTPStatusError(
+                "Error", request=mock_request, response=mock_response
+            ),
         ),
-    ), pytest.raises(RAGConnectionError):
+        pytest.raises(RAGConnectionError),
+    ):
         rag_client.query("test")
 
 
@@ -296,9 +307,10 @@ def test_query_generic_exception_raises_rag_connection_error(
     rag_client: RAGClient,
 ) -> None:
     """Test: Exception genérica → lanza RAGConnectionError."""
-    with patch.object(
-        rag_client.client, "post", side_effect=Exception("Unknown error")
-    ), pytest.raises(RAGConnectionError) as exc_info:
+    with (
+        patch.object(rag_client.client, "post", side_effect=Exception("Unknown error")),
+        pytest.raises(RAGConnectionError) as exc_info,
+    ):
         rag_client.query("test")
 
     assert "inesperado" in str(exc_info.value).lower()

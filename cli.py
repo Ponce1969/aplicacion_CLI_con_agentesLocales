@@ -106,7 +106,7 @@ class AgentCLI:
             "/help": lambda: print_help(),
             "/stats": lambda: print_stats(self.orchestrator.get_stats()),
             "/patterns": self._show_patterns,
-            "/clear": self._clear_and_header
+            "/clear": self._clear_and_header,
         }
 
         handler = commands.get(command)
@@ -127,6 +127,7 @@ class AgentCLI:
         """Procesa una consulta del usuario."""
 
         with console.status("[cyan]Procesando...[/cyan]", spinner="dots") as status:
+
             def update_status(message: str) -> None:
                 status.update(f"[cyan]{message}[/cyan]")
 

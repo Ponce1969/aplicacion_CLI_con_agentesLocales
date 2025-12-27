@@ -150,7 +150,9 @@ class RAGBlocked(RAGException):
         reason: Razón del bloqueo (ej: "contenido_inapropiado")
     """
 
-    def __init__(self, message: str = "Consulta bloqueada", reason: str = "unknown") -> None:
+    def __init__(
+        self, message: str = "Consulta bloqueada", reason: str = "unknown"
+    ) -> None:
         super().__init__(message)
         self.reason = reason
 
@@ -212,7 +214,9 @@ class RAGSessionNotFound(RAGInvalidRequest):
         session_id: ID de la sesión que no se encontró
     """
 
-    def __init__(self, message: str = "Sesión no encontrada", session_id: int | None = None) -> None:
+    def __init__(
+        self, message: str = "Sesión no encontrada", session_id: int | None = None
+    ) -> None:
         super().__init__(message)
         self.session_id = session_id
 
@@ -303,7 +307,9 @@ class RAGPartialResponse(RAGException):
         response: La respuesta parcial (para no perderla)
     """
 
-    def __init__(self, message: str = "Respuesta parcial", response: str | None = None) -> None:
+    def __init__(
+        self, message: str = "Respuesta parcial", response: str | None = None
+    ) -> None:
         super().__init__(message)
         self.response = response
 
@@ -314,7 +320,9 @@ class RAGPartialResponse(RAGException):
 
 
 def map_http_status_to_exception(
-    status_code: int, response_text: str = "", response_json: dict[str, Any] | None = None
+    status_code: int,
+    response_text: str = "",
+    response_json: dict[str, Any] | None = None,
 ) -> RAGException:
     """Mapea un código HTTP a la excepción de dominio correspondiente.
 

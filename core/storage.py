@@ -81,10 +81,10 @@ class KnowledgeStorage:
     def _init_brain_structure(self) -> None:
         """Inicializa la estructura de directorios brain/ según Manifold Framework."""
         subdirs = [
-            "temporal_bridge",      # Soul Package para continuidad
-            "metabolism",           # Log de salud metabólica
-            "witness_position",     # Estado actual del agente
-            "emergence_field"       # Ideas pre-lingüísticas
+            "temporal_bridge",  # Soul Package para continuidad
+            "metabolism",  # Log de salud metabólica
+            "witness_position",  # Estado actual del agente
+            "emergence_field",  # Ideas pre-lingüísticas
         ]
 
         for subdir in subdirs:
@@ -280,6 +280,7 @@ class KnowledgeStorage:
             package_content: Soul Package estructurado generado por Llama
         """
         import time
+
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         path = self.brain_path / "temporal_bridge" / "soul_package.md"
 
@@ -316,7 +317,8 @@ class KnowledgeStorage:
 
         if path.exists():
             with open(path, encoding="utf-8") as f:
-                return json.load(f)
+                result = json.load(f)
+                return result if isinstance(result, dict) else {}
         return {}
 
     def load_soul_package(self) -> str:
@@ -330,8 +332,9 @@ class KnowledgeStorage:
             return path.read_text(encoding="utf-8")
         return ""
 
-
-    def log_metabolism(self, token_count: int, state: str, entropy: float = 0.0) -> None:
+    def log_metabolism(
+        self, token_count: int, state: str, entropy: float = 0.0
+    ) -> None:
         """Registra el estado metabólico en CSV para análisis posterior.
 
         Args:
@@ -348,18 +351,28 @@ class KnowledgeStorage:
         if not log_path.exists():
             with open(log_path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
-                writer.writerow(["timestamp", "token_count", "metabolic_state", "entropy", "agent_chosen"])
+                writer.writerow(
+                    [
+                        "timestamp",
+                        "token_count",
+                        "metabolic_state",
+                        "entropy",
+                        "agent_chosen",
+                    ]
+                )
 
         # Append log entry
         with open(log_path, "a", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
-            writer.writerow([
-                time.strftime("%Y-%m-%d %H:%M:%S"),
-                token_count,
-                state,
-                f"{entropy:.3f}",
-                "pending"  # Se actualizará después de elegir agente
-            ])
+            writer.writerow(
+                [
+                    time.strftime("%Y-%m-%d %H:%M:%S"),
+                    token_count,
+                    state,
+                    f"{entropy:.3f}",
+                    "pending",  # Se actualizará después de elegir agente
+                ]
+            )
 
     def save_witness_position(self, locus: str, confidence: float) -> None:
         """Guarda la posición actual del testigo (Witness Position).
@@ -376,7 +389,7 @@ class KnowledgeStorage:
         state = {
             "locus": locus,
             "confidence": confidence,
-            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
         }
 
         with open(path, "w", encoding="utf-8") as f:
@@ -394,7 +407,8 @@ class KnowledgeStorage:
 
         if path.exists():
             with open(path, encoding="utf-8") as f:
-                return json.load(f)
+                result = json.load(f)
+                return result if isinstance(result, dict) else {}
         return {}
 
     def __del__(self) -> None:

@@ -94,9 +94,7 @@ def print_stats(stats: dict[str, Any]) -> None:
     table.add_row("Patrones Aprendidos", str(storage.get("learned_patterns", 0)))
     table.add_row("Cache Hits", str(storage.get("cache_hits", 0)))
     table.add_row("Uso de RAG", str(storage.get("rag_usage", 0)))
-    table.add_row(
-        "Tasa de Éxito", f"{storage.get('success_rate', 0)}%"
-    )
+    table.add_row("Tasa de Éxito", f"{storage.get('success_rate', 0)}%")
 
     console.print("\n")
     console.print(table)
@@ -125,9 +123,7 @@ def print_validation(validation: dict[str, Any]) -> None:
 def print_patterns(patterns: list[str]) -> None:
     """Imprime patrones detectados."""
     if patterns:
-        console.print(
-            f"\n[dim]🔍 Patrones detectados: {', '.join(patterns)}[/dim]"
-        )
+        console.print(f"\n[dim]🔍 Patrones detectados: {', '.join(patterns)}[/dim]")
 
 
 def _print_with_code(message: str) -> None:

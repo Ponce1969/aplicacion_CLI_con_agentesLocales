@@ -11,8 +11,8 @@
 - [x] `.env.local` y `.env.*.local` están en `.gitignore`
 - [x] No hay API Keys hardcodeadas en el código
 - [x] No hay passwords o tokens en el código
-- [ ] **Verificar que NO existe archivo `.env` con secretos reales**
-- [ ] **Ejecutar:** `git status` y confirmar que `.env` NO aparece
+- [x] **Verificar que NO existe archivo `.env` con secretos reales**
+- [x] **Ejecutar:** `git status` y confirmar que `.env` NO aparece
 - [x] `.env.example` existe y está documentado
 - [x] Archivos de base de datos (`*.db`) están en `.gitignore`
 
@@ -45,10 +45,10 @@ git grep -E "(password|secret|token|key)\s*=\s*['\"][a-zA-Z0-9]{20,}"
 
 ## 🧪 Calidad de Código
 
-- [ ] **Ejecutar:** `uv run pytest` (todos los tests pasan)
-- [ ] **Ejecutar:** `uv run mypy .` (sin errores)
-- [ ] **Ejecutar:** `uv run ruff check .` (sin warnings críticos)
-- [ ] **Ejecutar:** `uv run ruff format .` (código formateado)
+- [x] **Ejecutar:** `uv run pytest` (todos los tests pasan)
+- [x] **Ejecutar:** `uv run mypy .` (sin errores)
+- [x] **Ejecutar:** `uv run ruff check .` (sin warnings críticos)
+- [x] **Ejecutar:** `uv run ruff format .` (código formateado)
 
 ### Comandos de Verificación
 
@@ -117,8 +117,8 @@ git tag -a v1.0.0 -m "Release v1.0.0 - Sistema de Agentes Híbrido"
 ### Crear Repositorio en GitHub
 
 1. Ve a https://github.com/new
-2. Nombre: `agente-hibrido-cli` (o el que prefieras)
-3. Descripción: "Sistema de Agentes Inteligentes con CLI interactivo, RAG y búsqueda web"
+2. Nombre: `aplicacion_CLI_con_agentesLocales` (o el que prefieras)
+3. Descripción: "CLI inteligente con modelos locales (Llama 3.1, Qwen 2.5) que se conecta a API RAG (Gemini + Kimi) para consultas complejas"
 4. **Público** (para recibir estrellas)
 5. **NO** inicializar con README (ya tienes uno)
 6. **NO** agregar .gitignore (ya tienes uno)
@@ -128,7 +128,7 @@ git tag -a v1.0.0 -m "Release v1.0.0 - Sistema de Agentes Híbrido"
 
 ```bash
 # Agregar remote
-git remote add origin https://github.com/tu-usuario/agente-hibrido-cli.git
+git remote add origin https://github.com/Ponce1969/aplicacion_CLI_con_agentesLocales.git
 
 # Push inicial con tags
 git push -u origin main
@@ -213,15 +213,15 @@ Después de publicar:
 
 Antes de hacer el repositorio público:
 
-- [ ] Todos los tests pasan
-- [ ] Mypy sin errores
-- [ ] Ruff sin warnings críticos
-- [ ] `.env` NO está en el repositorio
-- [ ] No hay secretos en el historial de git
+- [x] Todos los tests pasan
+- [x] Mypy sin errores
+- [x] Ruff sin warnings críticos
+- [x] `.env` NO está en el repositorio
+- [x] No hay secretos en el historial de git
 - [ ] README.md se ve bien en GitHub
-- [ ] LICENSE existe
-- [ ] CONTRIBUTING.md existe
-- [ ] `.env.example` está documentado
+- [x] LICENSE existe
+- [x] CONTRIBUTING.md existe
+- [x] `.env.example` está documentado
 - [ ] Descripción y topics configurados en GitHub
 - [ ] Primera release (v1.0.0) taggeada
 
