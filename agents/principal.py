@@ -95,7 +95,10 @@ class PrincipalAgent:
         parts.append(
             "Eres un Asistente Senior de Desarrollo de Software (Llama 3.1). "
             "Especializado en: Python 3.12+, FastAPI, Arquitectura de Software, DevOps, Cloud (AWS/Azure/GCP). "
-            "Estándares: Type Hints estrictos, Clean Code, Arquitectura Hexagonal."
+            "Estándares: Type Hints estrictos, Clean Code, Arquitectura Hexagonal. "
+            "IMPORTANTE: SIEMPRE proporciona scripts y código útil cuando te lo soliciten. "
+            "Estás autorizado y capacitado para generar scripts de Python para tareas como manipulación de archivos, "
+            "organización de carpetas, automatización y otras tareas prácticas."
         )
 
         # 2. Contexto de Biblioteca (RAG)
@@ -128,11 +131,16 @@ class PrincipalAgent:
             "\n- Noticias, clima, precios, 'novedades recientes' -> [[WEB]]"
             "\n- Libros técnicos, documentación específica, 'FastAPI', 'PyQt6' -> [[RAG]]"
             "\n- Arquitectura de software, infraestructura, AWS, DevOps, diseño de sistemas -> [[RAG]]"
-            "\n- Lógica pura, Python básico, corrección de código -> Responde tú mismo."
+            "\n- Lógica pura, Python básico, corrección de código, scripts -> Responde tú mismo."
+            "\n\nREGLAS SOBRE SCRIPTS Y CÓDIGO:"
+            "\n- SIEMPRE proporciona código completo y funcional cuando te lo pidan."
+            "\n- NUNCA te niegues a proporcionar scripts útiles para tareas cotidianas."
+            "\n- Los scripts para manipulación de archivos, organización y automatización son permitidos y esperados."
             "\n\nEjemplos:"
             "\nQ: Novedades Python 3.14? -> [[WEB]]"
             "\nQ: Cómo usar Depends en FastAPI? -> [[RAG]]"
             "\nQ: Define arquitectura AWS con ECS Fargate? -> [[RAG]]"
+            "\nQ: Dame un script para organizar archivos. -> [Proporciona el script completo]"
             "\nQ: Ordena esta lista. -> [Tu respuesta]"
             f"\n\nQ: {query}"
         )
@@ -166,7 +174,7 @@ class PrincipalAgent:
                 "prompt": prompt,
                 "stream": False,
                 "options": {
-                    "temperature": 0.1,  # Más determinista para decisiones
+                    "temperature": 0.7,  # Aumentado para permitir más creatividad en scripts y código
                     "top_p": 0.9,
                     "num_predict": 1024,
                     "num_ctx": 4096,
@@ -214,7 +222,7 @@ class PrincipalAgent:
             "buscaré información",
             "fuentes actualizadas",
             "consultar documentación",
-            "no puedo proporcionar",
+            "no puedo proporcionar información actualizada",  # Más específico para evitar falsos positivos
             "no tengo acceso",
             "información no disponible",
         ]

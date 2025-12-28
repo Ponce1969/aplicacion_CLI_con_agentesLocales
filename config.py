@@ -64,13 +64,15 @@ BACKEND_PATTERNS = {
     ],
     "docker": [
         "Dockerfile",
-        "docker-compose.yml",
-        "volumes",
-        "networks",
-        "services",
-        "build",
-        "image",
-    ],
+        "docker-compose",
+        "docker compose",
+        "containerization",
+        "docker volume",
+        "docker network",
+        "docker service",
+        "docker build",
+        "docker image",
+    ],  # Patrones más específicos para evitar falsos positivos
     "dependency_injection": [
         "Depends",
         "get_db",

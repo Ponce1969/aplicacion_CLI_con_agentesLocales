@@ -105,7 +105,7 @@ class Orchestrator:
         elif intent == "web":
             needs_rag = True
             target_mode = "kimi"
-        elif analysis["confidence"] < 0.4:
+        elif analysis["confidence"] < 0.5:  # Ajustado de 0.4 a 0.5 para permitir que Llama responda más consultas localmente
             needs_rag = True
             target_mode = "auto"
 
