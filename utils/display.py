@@ -17,7 +17,7 @@ def print_user(message: str) -> None:
 
 def print_principal(message: str, show_model: bool = True) -> None:
     """Imprime respuesta del agente principal."""
-    model_tag = "[dim](llama3.1:8b)[/dim]" if show_model else ""
+    model_tag = "[dim](qwen-orchestrator)[/dim]" if show_model else ""
     console.print(f"\n🤖 [green]Agente Principal[/green] {model_tag}")
 
     if "```" in message:
@@ -28,7 +28,7 @@ def print_principal(message: str, show_model: bool = True) -> None:
 
 def print_executor(message: str, show_model: bool = True) -> None:
     """Imprime respuesta del agente ejecutor."""
-    model_tag = "[dim](qwen2.5:7b-instruct)[/dim]" if show_model else ""
+    model_tag = "[dim](qwen-validator)[/dim]" if show_model else ""
     console.print(f"\n⚡ [yellow]Agente Ejecutor[/yellow] {model_tag}")
     console.print(f"[yellow]{message}[/yellow]")
 
@@ -78,7 +78,7 @@ def print_header() -> None:
         "[bold cyan]🤖 Sistema de Agentes Inteligentes[/bold cyan]",
         justify="center",
     )
-    console.print("[dim]llama3.1:8b + qwen2.5:7b-instruct[/dim]", justify="center")
+    console.print("[dim]qwen-orchestrator + qwen-validator[/dim]", justify="center")
     console.print("=" * 70 + "\n")
 
 
@@ -158,9 +158,9 @@ def print_help() -> None:
 
 [cyan bold]Funcionamiento:[/cyan bold]
 
-• [green]Agente Principal (llama3.1:8b)[/green]: Analiza y genera respuestas
-• [yellow]Agente Ejecutor (qwen2.5:7b-instruct)[/yellow]: Valida código
-• [blue]RAG (Gemini + Kimi-k2)[/blue]: Consulta cuando hay baja confianza
+• [green]Agente Principal (qwen-orchestrator)[/green]: Analiza y genera respuestas
+• [yellow]Agente Ejecutor (qwen-validator)[/yellow]: Valida código
+• [blue]RAG (Gemini + DeepSeek)[/blue]: Consulta cuando hay baja confianza
 • [magenta]Cache (SQLite)[/magenta]: Respuestas instantáneas de patrones aprendidos
 
 [dim]El sistema aprende de tus patrones de backend y reduce consultas a RAG.[/dim]""",

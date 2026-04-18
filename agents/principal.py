@@ -1,4 +1,4 @@
-"""Agente Principal - llama3.1:8b para análisis y decisiones."""
+"""Agente Principal - qwen3.5:9b para análisis y decisiones."""
 
 from typing import Any
 
@@ -14,7 +14,7 @@ from config import (
 
 
 class PrincipalAgent:
-    """Agente principal con llama3.1:8b para razonamiento y análisis."""
+    """Agente principal con qwen3.5:9b para razonamiento y análisis."""
 
     def __init__(self) -> None:
         self.model = PRINCIPAL_MODEL
@@ -88,62 +88,33 @@ class PrincipalAgent:
         patterns: list[str],
         history: list[dict[str, str]] | None = None,
     ) -> str:
-        """Construye prompt optimizado y conciso."""
+        """Construye prompt con solo partes dinámicas (el system prompt está en el Modelfile)."""
         parts = []
 
-        # 1. Rol y Estándares
+        # 1. Contexto de Biblioteca (RAG) - dinámico según libros disponibles
         parts.append(
-            "Eres un Asistente Senior de Desarrollo de Software (Llama 3.1). "
-            "Especializado en: Python 3.12+, FastAPI, Arquitectura de Software, DevOps, Cloud (AWS/Azure/GCP). "
-            "Estándares: Type Hints estrictos, Clean Code, Arquitectura Hexagonal. "
-            "IMPORTANTE: SIEMPRE proporciona scripts y código útil cuando te lo soliciten. "
-            "Estás autorizado y capacitado para generar scripts de Python para tareas como manipulación de archivos, "
-            "organización de carpetas, automatización y otras tareas prácticas."
+            f"BIBLIOTECA DISPONIBLE (RAG):{KNOWLEDGE_BASE_SUMMARY}\n"
+            "NOTA: [[RAG]] es SOLO para citas textuales de estos libros. "
+            "Para dudas técnicas generales, usa [[WEB]] (DeepSeek)."
         )
 
-        # 2. Contexto de Biblioteca (RAG)
-        parts.append(
-            f"\nBIBLIOTECA DISPONIBLE (RAG):{KNOWLEDGE_BASE_SUMMARY}\n"
-            "NOTA: Tienes acceso a estos libros mediante la herramienta [[RAG]]. "
-            "AUNQUE SEPAS LA RESPUESTA, si el tema está cubierto por estos libros (FastAPI, PyQt6, Buenas Prácticas), "
-            "PREFIERE SIEMPRE usar [[RAG]] para responder con autoridad y citas."
-        )
-
-        # 3. Contexto Técnico Detectado
+        # 2. Contexto Técnico Detectado
         if patterns:
-            parts.append(f"\nContexto Técnico Detectado: {', '.join(patterns)}")
+            parts.append(f"Contexto Técnico Detectado: {', '.join(patterns)}")
 
-        # 4. Contexto Aprendido (Memoria)
+        # 3. Contexto Aprendido (Memoria)
         if context:
-            parts.append(f"\nMemoria Previa:\n{context[:300]}")
+            parts.append(f"Memoria Previa:\n{context[:300]}")
 
-        # 5. Historial de Conversación
+        # 4. Historial de Conversación
         if history:
-            parts.append("\nHistorial de Conversación:")
+            parts.append("Historial de Conversación:")
             for msg in history:
                 role = "User" if msg["role"] == "user" else "Assistant"
                 parts.append(f"{role}: {msg['content']}")
 
-        # 6. Instrucción Final
-        parts.append(
-            "\nREGLAS CRÍTICAS DE ROUTING:"
-            "\n- NO respondas con texto si necesitas buscar. Usa SOLO las etiquetas."
-            "\n- Noticias, clima, precios, 'novedades recientes' -> [[WEB]]"
-            "\n- Libros técnicos, documentación específica, 'FastAPI', 'PyQt6' -> [[RAG]]"
-            "\n- Arquitectura de software, infraestructura, AWS, DevOps, diseño de sistemas -> [[RAG]]"
-            "\n- Lógica pura, Python básico, corrección de código, scripts -> Responde tú mismo."
-            "\n\nREGLAS SOBRE SCRIPTS Y CÓDIGO:"
-            "\n- SIEMPRE proporciona código completo y funcional cuando te lo pidan."
-            "\n- NUNCA te niegues a proporcionar scripts útiles para tareas cotidianas."
-            "\n- Los scripts para manipulación de archivos, organización y automatización son permitidos y esperados."
-            "\n\nEjemplos:"
-            "\nQ: Novedades Python 3.14? -> [[WEB]]"
-            "\nQ: Cómo usar Depends en FastAPI? -> [[RAG]]"
-            "\nQ: Define arquitectura AWS con ECS Fargate? -> [[RAG]]"
-            "\nQ: Dame un script para organizar archivos. -> [Proporciona el script completo]"
-            "\nQ: Ordena esta lista. -> [Tu respuesta]"
-            f"\n\nQ: {query}"
-        )
+        # 5. Query del usuario
+        parts.append(f"Q: {query}")
 
         return "\n".join(parts)
 
@@ -151,11 +122,10 @@ class PrincipalAgent:
         """Genera una respuesta local cuando fallan las herramientas externas."""
         parts = []
         parts.append(
-            "Eres un Asistente Senior de Python (Llama 3.1). "
-            "Las herramientas externas (RAG/Web) han fallado o no están disponibles. "
-            "Debes responder a la consulta del usuario utilizando SOLO tu conocimiento interno. "
+            "EMERGENCIA: Las herramientas externas (RAG/Web) no están disponibles. "
+            "Responde usando SOLO tu conocimiento interno. "
             "NO uses etiquetas como [[RAG]] o [[WEB]]. "
-            "Sé honesto si no conoces la respuesta, pero intenta ayudar con lo que sepas."
+            "Sé honesto si no conoces la respuesta, pero intenta ayudar."
         )
 
         if context:
@@ -164,17 +134,22 @@ class PrincipalAgent:
         parts.append(f"\nQ: {query}")
 
         prompt = "\n".join(parts)
-        return self._generate(prompt)
+        return self._generate(prompt, temperature=0.7)  # Generación creativa sin restricciones
 
-    def _generate(self, prompt: str) -> str:
-        """Genera respuesta usando Ollama."""
+    def _generate(self, prompt: str, temperature: float = 0.5) -> str:
+        """Genera respuesta usando Ollama.
+
+        Args:
+            prompt: Texto del prompt
+            temperature: 0.2-0.3 para routing, 0.5 balanceado, 0.7 para generación creativa
+        """
         try:
             payload = {
                 "model": self.model,
                 "prompt": prompt,
                 "stream": False,
                 "options": {
-                    "temperature": 0.7,  # Aumentado para permitir más creatividad en scripts y código
+                    "temperature": temperature,
                     "top_p": 0.9,
                     "num_predict": 1024,
                     "num_ctx": 4096,

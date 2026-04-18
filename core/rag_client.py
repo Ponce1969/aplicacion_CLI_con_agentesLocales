@@ -33,7 +33,7 @@ class RAGClient:
 
         Args:
             question: Pregunta del usuario
-            mode: 'auto', 'rag', o 'kimi'
+            mode: 'auto', 'rag', o 'deepseek'
             session_id: ID de sesión (0 para nueva sesión temporal)
 
         Returns:
@@ -135,8 +135,10 @@ class RAGClient:
         """
         return self.query(question, mode="rag")
 
-    def query_kimi(self, question: str) -> str:
-        """Consulta forzando modo Kimi (Chat general).
+    def query_deepseek(self, question: str) -> str:
+        """Consulta forzando modo DeepSeek (Chat general).
+
+        Nota: El servidor usa mode="kimi" internamente para DeepSeek.
 
         Raises:
             Ver excepciones en query()

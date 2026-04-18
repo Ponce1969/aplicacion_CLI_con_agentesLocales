@@ -118,7 +118,7 @@ git tag -a v1.0.0 -m "Release v1.0.0 - Sistema de Agentes Híbrido"
 
 1. Ve a https://github.com/new
 2. Nombre: `aplicacion_CLI_con_agentesLocales` (o el que prefieras)
-3. Descripción: "CLI inteligente con modelos locales (Llama 3.1, Qwen 2.5) que se conecta a API RAG (Gemini + Kimi) para consultas complejas"
+3. Descripción: "CLI inteligente con modelos locales (Qwen 3.5, Qwen Coder) que se conecta a API RAG (DeepSeek + Gemini) para consultas complejas"
 4. **Público** (para recibir estrellas)
 5. **NO** inicializar con README (ya tienes uno)
 6. **NO** agregar .gitignore (ya tienes uno)

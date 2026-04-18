@@ -1,4 +1,4 @@
-"""Agente Ejecutor/Validador - qwen2.5:7b-instruct para validación y ejecución."""
+"""Agente Ejecutor/Validador - qwen2.5-coder:7b para validación y ejecución."""
 
 from typing import Any
 
@@ -8,7 +8,7 @@ from config import EXECUTOR_MODEL, OLLAMA_BASE_URL, OLLAMA_TIMEOUT
 
 
 class ExecutorAgent:
-    """Agente ejecutor con qwen2.5:7b-instruct para validación y testing."""
+    """Agente ejecutor con qwen2.5-coder:7b para validación y testing."""
 
     def __init__(self) -> None:
         self.model = EXECUTOR_MODEL
@@ -35,17 +35,8 @@ class ExecutorAgent:
         }
 
     def _build_validation_prompt(self, code: str, context: str) -> str:
-        """Construye prompt optimizado para validación."""
-        prompt = (
-            "Eres un Senior Python Code Reviewer. Tu tarea es validar el siguiente código.\n"
-            "Reglas:\n"
-            "1. RESPONDE SIEMPRE EN ESPAÑOL.\n"
-            "2. Verifica compatibilidad con Python 3.12+.\n"
-            "3. Exige Type Hints estrictos y compatibilidad con mypy --strict.\n"
-            "4. Si el código es correcto, responde 'Código Correcto'.\n"
-            "5. Si hay errores, lístalos brevemente y muestra la versión corregida.\n\n"
-            f"Código a revisar:\n```python\n{code}\n```\n"
-        )
+        """Construye prompt para validación (el system prompt está en el Modelfile)."""
+        prompt = f"Código a revisar:\n```python\n{code}\n```\n"
 
         if context:
             prompt += f"\nContexto original: {context[:200]}\n"

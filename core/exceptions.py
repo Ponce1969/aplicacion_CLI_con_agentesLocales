@@ -32,7 +32,7 @@ class RAGUnavailable(RAGException):
     """Proveedor de IA no disponible temporalmente (HTTP 503).
 
     Causa típica:
-    - Gemini/Kimi/Brave están caídos
+    - DeepSeek/Gemini están caídos
     - Circuit breaker abierto en la API
     - Mantenimiento programado
 
@@ -51,7 +51,7 @@ class RAGTimeout(RAGException):
     """Timeout al consultar proveedor externo (HTTP 504).
 
     Causa típica:
-    - Gemini/Kimi tardaron más de lo esperado
+    - DeepSeek/Gemini tardaron más de lo esperado
     - Red lenta
     - Proveedor sobrecargado
 
@@ -89,7 +89,7 @@ class RAGRateLimited(RAGException):
 
     Causa típica:
     - Demasiadas consultas en poco tiempo
-    - Límite de API de Gemini/Kimi
+    - Límite de API de DeepSeek/Gemini
 
     Estrategia CLI:
     - Retry 3x con backoff exponencial (5s, 10s, 20s)

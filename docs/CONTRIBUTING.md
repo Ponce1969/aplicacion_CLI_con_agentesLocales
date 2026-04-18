@@ -56,7 +56,7 @@ Para nuevas funcionalidades o mejoras:
 
 - Python 3.12+
 - [uv](https://github.com/astral-sh/uv) (gestor de paquetes)
-- [Ollama](https://ollama.ai/) con modelos `llama3.1:8b` y `qwen2.5:7b-instruct`
+- [Ollama](https://ollama.ai/) con modelos `qwen-orchestrator` (Qwen 3.5 9B) y `qwen-validator` (Qwen 2.5 Coder 7B)
 
 ### Instalación
 
@@ -237,8 +237,8 @@ core/               # Lógica de dominio (sin dependencias externas)
 └── exceptions.py   # Excepciones de dominio
 
 agents/             # Agentes especializados
-├── principal.py    # Llama 3.1 (routing)
-└── executor.py     # Qwen 2.5 (validación)
+├── principal.py    # qwen-orchestrator (routing)
+└── executor.py     # qwen-validator (validación)
 
 storage/            # Persistencia (adaptador)
 └── local_storage.py

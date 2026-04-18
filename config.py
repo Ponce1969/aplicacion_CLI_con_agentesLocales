@@ -10,12 +10,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Modelos locales
-PRINCIPAL_MODEL: Final[str] = "llama3.1:8b"
-EXECUTOR_MODEL: Final[str] = "qwen2.5:7b-instruct"
+PRINCIPAL_MODEL: Final[str] = "qwen-orchestrator"  # Modelfile: modelfiles/Modelfile.orchestrator
+EXECUTOR_MODEL: Final[str] = "qwen-validator"  # Modelfile: modelfiles/Modelfile.validator
 
 # Ollama
 OLLAMA_BASE_URL: Final[str] = "http://localhost:11434"
-OLLAMA_TIMEOUT: Final[int] = 60
+OLLAMA_TIMEOUT: Final[int] = 120
 
 # RAG remoto (Orange Pi 5 Plus con Cloudflare Tunnel)
 RAG_BASE_URL: Final[str] = "https://swagger-rag.loquinto.com"
@@ -28,7 +28,7 @@ RAG_ENABLED: Final[bool] = True
 DB_PATH: Final[Path] = Path("agente_knowledge.db")
 
 # Sistema de aprendizaje
-LEARNING_THRESHOLD: Final[int] = 3  # Después de 3 usos, se considera patrón
+LEARNING_THRESHOLD: Final[int] = 2  # Después de 2 usos, se considera patrón
 CACHE_SIMILARITY_THRESHOLD: Final[float] = 0.85  # Similitud para cache hit
 
 # Contexto de backend (patrones conocidos)
@@ -95,15 +95,16 @@ BACKEND_PATTERNS = {
 # Base de conocimiento indexada (RAG)
 # Formato optimizado para el prompt del sistema: ID: Título (Keywords)
 KNOWLEDGE_BASE_SUMMARY: Final[str] = """
-- ID 5: 97 Things Every Programmer Should Know (software wisdom, best practices)
-- ID 6: FastAPI Modern Web Dev (backend, api, python web)
-- ID 7: Fluent Python (advanced python, internals, data structures)
-- ID 9: Create GUI Applications with PyQt6 (desktop gui, pyqt, widgets)
-- ID 10: The Pragmatic Programmer (methodology, career, coding philosophy)
-- ID 11/16: Data Science from Scratch (algorithms, data analysis, basics)
-- ID 12: Prompt Engineering for LLMs (ai, prompts, llm applications)
-- ID 14: Google TechAI Prompting (official guide, techniques)
-- ID 15: Think Python (fundamentals, learning python)
+- ID 30: FastAPI Modern Python Web Dev (backend, api, python web)
+- ID 31: El Programador Pragmático (methodology, career, coding philosophy)
+- ID 32: Effective Python (best practices, python tips, brett slatkin)
+- ID 34: High Performance Python (optimization, performance, profiling)
+- ID 35: Architecture Patterns with Python (ddd, architecture, hexagonal)
+- ID 36: Patrones de Diseño (design patterns, gof, software design)
+- ID 37: Clean Architecture (architecture, solid, robert martin)
+- ID 38: Marco de Decisión (decision making, framework)
+- ID 39: Fluent Python (advanced python, internals, data structures)
+- ID 40: Designing Data-Intensive Applications (data, distributed systems, kleppmann)
 """
 
 # Colores para CLI (Rich)

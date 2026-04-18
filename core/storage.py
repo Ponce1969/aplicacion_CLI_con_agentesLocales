@@ -277,7 +277,7 @@ class KnowledgeStorage:
         """Guarda el estado comprimido para la próxima encarnación (Mitosis).
 
         Args:
-            package_content: Soul Package estructurado generado por Llama
+            package_content: Soul Package estructurado generado por Qwen
         """
         import time
 

@@ -330,10 +330,10 @@ def test_query_gemini_rag_calls_query_with_rag_mode(rag_client: RAGClient) -> No
     assert result == "response"
 
 
-def test_query_kimi_calls_query_with_kimi_mode(rag_client: RAGClient) -> None:
-    """Test: query_kimi() llama a query() con mode='kimi'."""
+def test_query_deepseek_calls_query_with_kimi_mode(rag_client: RAGClient) -> None:
+    """Test: query_deepseek() llama a query() con mode='kimi' (servidor usa 'kimi' internamente)."""
     with patch.object(rag_client, "query", return_value="response") as mock_query:
-        result = rag_client.query_kimi("test")
+        result = rag_client.query_deepseek("test")
 
     mock_query.assert_called_once_with("test", mode="kimi")
     assert result == "response"

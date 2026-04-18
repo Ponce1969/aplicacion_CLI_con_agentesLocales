@@ -11,7 +11,7 @@ load_dotenv()
 API_KEY = os.getenv("RAG_API_KEY", "")
 BASE_URL = "https://swagger-rag.loquinto.com"
 
-print("--- Diagnóstico de Conexión RAG/Kimi ---")
+print("--- Diagnóstico de Conexión RAG/DeepSeek ---")
 print(f"URL Base: {BASE_URL}")
 print(f"API Key presente: {'Sí' if API_KEY else 'No'}")
 if API_KEY:
@@ -61,7 +61,7 @@ def test_endpoint(mode: str, query: str) -> None:
         print(f"❌ Excepción: {e}")
 
 
-# 1. Probar Modo Kimi (Chat General)
+# 1. Probar Modo DeepSeek (Chat General, servidor usa mode='kimi' internamente)
 test_endpoint("kimi", "¿Cual es la capital de Francia? Responde brevemente.")
 
 # 2. Probar Modo RAG (Búsqueda)

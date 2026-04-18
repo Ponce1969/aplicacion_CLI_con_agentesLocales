@@ -1,7 +1,7 @@
 [project]
 name = "agente"
 version = "2.0.0"
-description = "Sistema de agentes inteligentes con llama3.1:8b y qwen2.5:7b-instruct"
+description = "Sistema de agentes inteligentes con qwen-orchestrator y qwen-validator"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

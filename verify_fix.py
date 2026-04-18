@@ -14,7 +14,7 @@ def verify_fixes() -> None:
     # pero el método query permite pasar session_id)
     print("\n1. Prueba de recuperación de Sesión (session_id=999999)")
     # Esto debería fallar primero con 500, y luego reintentar con 0 y tener éxito
-    response = client.query("Hola Kimi", mode="kimi", session_id=999999)
+    response = client.query("Hola DeepSeek", mode="kimi", session_id=999999)
     if response:
         print(f"✅ Recuperación exitosa. Respuesta: {response[:50]}...")
     else:

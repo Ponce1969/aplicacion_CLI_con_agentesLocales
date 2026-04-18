@@ -146,8 +146,8 @@ class AgentCLI:
             print_cache(response)
         elif source == "rag_gemini":
             print_rag(response, "gemini")
-        elif source == "rag_kimi":
-            print_rag(response, "kimi")
+        elif source == "rag_deepseek":
+            print_rag(response, "deepseek")
         elif source == "principal":
             print_principal(response)
         else:

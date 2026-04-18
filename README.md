@@ -1,33 +1,23 @@
-# 🤖 Sistema de Agentes Híbrido (CLI & RAG)
+# 🤖 Sistema de Agentes Inteligentes (CLI & RAG)
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Type Checked: mypy](https://img.shields.io/badge/type_checked-mypy-blue.svg)](http://mypy-lang.org/)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
-CLI inteligente que combina **modelos locales** (Llama 3.1, Qwen 2.5) con **API externa** de RAG (Gemini + Kimi). Cuando los modelos locales tienen dudas, consultan automáticamente la API para obtener información actualizada.
+CLI inteligente que combina **modelos locales** (Qwen 3.5 + Qwen 2.5 Coder) con **API externa** RAG (DeepSeek + Gemini). Cuando los modelos locales tienen dudas, consultan automáticamente la API para obtener información actualizada.
 
 > **🔗 Conexión Principal:** Este CLI se conecta a [este repositorio API](https://github.com/Ponce1969/agente_hibrido_texto_Kimi_rag_Gemini) que proporciona:
-> - 📚 **RAG con Gemini**: Base de conocimientos técnicos indexados
-> - 🌐 **Web Search con Kimi**: Búsqueda en tiempo real
-> - ⚡ **API REST**: Endpoint `/query` para consultas externas
+> - 🌐 **DeepSeek**: Consultor senior con 5 roles especializados (fuente primaria externa)
+> - 📚 **Gemini RAG**: Base de conocimientos con libros indexados (citas textuales)
+> - ⚡ **API REST**: Endpoint `/api/internal/llm-gateway` para consultas externas
 
 > **🎯 Características:**
-> - 🧠 **Llama 3.1**: Orquestador principal (decide cuándo usar RAG)
-> - ✅ **Qwen 2.5**: Validador de código (revisa y corrige respuestas)
-> - 🔄 **Routing automático**: Etiquetas `[[RAG]]` activan la API cuando es necesario
-> - 💬 **Modo interactivo** con memoria persistente
+> - 🧠 **Qwen 3.5 (9B)**: Orquestador principal (decide cuándo consultar externo)
+> - ✅ **Qwen 2.5 Coder (7B)**: Validador de código (revisa y corrige respuestas)
+> - 🔄 **Routing automático**: Etiquetas `[[WEB]]` y `[[RAG]]` activan fuentes externas
+> - 💬 **Modo interactivo** con memoria persistente y aprendizaje
 > - 🔍 **Type-safe** con mypy --strict
-
-> **🎯 Características Principales:**
-> - 🚀 Respuestas rápidas con modelos locales (Ollama)
-> - 📚 Acceso a base de conocimiento técnica (RAG)
-> - 🌐 Búsqueda web en tiempo real (Kimi)
-> - 🔍 Routing inteligente basado en contexto
-> - ✅ Validación automática de código
-> - 💬 Modo interactivo con memoria de conversación
-> - 🎨 Arquitectura hexagonal limpia
-> - 🔒 Type-safe con mypy --strict
 
 ---
 
@@ -73,34 +63,34 @@ Dentro del modo interactivo, tienes herramientas de control:
 ### 🔗 Flujo de Conexión CLI ↔ API
 
 ```
-CLI (Local)                    API (Remota)
-├─ Llama 3.1 (Orquestador) ──→ ├─ Gemini RAG
-├─ Qwen 2.5 (Validador)       ├─ Kimi Web Search
-└─ Rich CLI (UI)              └─ FastAPI Server
+CLI (Local)                         API (Remota)
+├─ qwen-orchestrator (Qwen 3.5) ──→ ├─ DeepSeek (5 roles senior)
+├─ qwen-validator (Qwen Coder)     ├─ Gemini RAG (libros indexados)
+└─ Rich CLI (UI)                   └─ FastAPI Server (Cloudflare Tunnel)
 ```
 
-**1. Modelos Locales (CLI):**
-- **Llama 3.1**: Analiza tu consulta y decide si necesita información externa
-- **Qwen 2.5**: Valida y mejora el código generado
+**1. Modelos Locales (Ollama):**
+- **qwen-orchestrator** (Qwen 3.5 9B): Analiza tu consulta y decide si necesita información externa. System prompt horneado en Modelfile.
+- **qwen-validator** (Qwen 2.5 Coder 7B): Valida y mejora el código generado. Especializado en Python 3.12+ moderno.
 
 **2. API Externa ([Repositorio API](https://github.com/Ponce1969/agente_hibrido_texto_Kimi_rag_Gemini)):**
-- **Endpoint**: `POST /query`
-- **Gemini**: Base de conocimientos técnicos (libros, documentación)
-- **Kimi**: Búsqueda web en tiempo real
+- **Endpoint**: `POST /api/internal/llm-gateway`
+- **DeepSeek**: Consultor senior con 5 roles (Arquitecto, Ingeniero de Código, Auditor de Seguridad, Especialista BD, Ingeniero de Refactoring)
+- **Gemini RAG**: Base de conocimientos con libros PDF indexados (citas textuales)
 
 **3. Proceso de Decisión:**
-1. Llama 3.1 recibe tu pregunta
-2. Si detecta necesidad de RAG → agrega etiqueta `[[RAG]]`
-3. CLI envía consulta a la API
+1. qwen-orchestrator recibe tu pregunta
+2. Si necesita info externa → agrega etiqueta `[[WEB]]` o `[[RAG]]`
+3. CLI envía consulta a la API (DeepSeek primero, Gemini como fallback)
 4. API retorna información actualizada
-5. Qwen 2.5 valida la respuesta final
+5. qwen-validator valida la respuesta final
 
 ### 🔄 Routing Inteligente
 
 El sistema usa **Action Tags** para decidir automáticamente:
-- `[[RAG]]` → Consulta base de conocimientos (Gemini)
-- `[[WEB]]` → Búsqueda web en tiempo real (Kimi)
-- Sin tags → Respuesta local con modelos
+- `[[WEB]]` → DeepSeek (consultas conceptuales, mejores prácticas, arquitectura, seguridad)
+- `[[RAG]]` → Gemini + libros indexados (citas textuales exactas de páginas)
+- Sin tags → Respuesta local con Qwen (código, scripts, correcciones)
 
 ---
 
@@ -109,7 +99,7 @@ El sistema usa **Action Tags** para decidir automáticamente:
 ### 📋 Requisitos Previos
 
 1. **Python 3.12+**
-2. **Ollama local** (para modelos Llama 3.1 y Qwen 2.5)
+2. **Ollama local** (para modelos qwen-orchestrator y qwen-validator)
 3. **API RAG externa**: [Repositorio API](https://github.com/Ponce1969/agente_hibrido_texto_Kimi_rag_Gemini)
 
 ### 🔧 Instalación Completa
@@ -123,6 +113,10 @@ cd aplicacion_CLI_con_agentesLocales
 # Instalar dependencias
 pip install uv
 uv sync
+
+# Crear modelos en Ollama desde Modelfiles
+ollama create qwen-orchestrator -f modelfiles/Modelfile.orchestrator
+ollama create qwen-validator -f modelfiles/Modelfile.validator
 ```
 
 #### 2. Configurar API RAG (Servidor)
@@ -130,7 +124,7 @@ uv sync
 # Clonar y configurar el servidor API
 git clone https://github.com/Ponce1969/agente_hibrido_texto_Kimi_rag_Gemini.git
 cd agente_hibrido_texto_Kimi_rag_Gemini
-# Seguir instrucciones del README para configurar Gemini y Kimi
+# Seguir instrucciones del README para configurar DeepSeek y Gemini
 ```
 
 #### 3. Configurar Variables de Entorno
@@ -161,13 +155,20 @@ uv run pytest
 
 ## 📚 Base de Conocimiento (RAG)
 
-El agente tiene acceso prioritario a estos documentos técnicos:
+El agente tiene acceso a estos libros técnicos indexados (Gemini RAG):
 
-*   *Fluent Python (Luciano Ramalho)*
-*   *FastAPI: Modern Python Web Development*
-*   *Create GUI Applications with PyQt6*
-*   *The Pragmatic Programmer*
-*   *Google TechAI: Prompt Engineering*
+| ID | Libro | Temas |
+|---|---|---|
+| 30 | FastAPI Modern Python Web Dev | backend, api, python web |
+| 31 | El Programador Pragmático | methodology, career, coding philosophy |
+| 32 | Effective Python | best practices, python tips |
+| 34 | High Performance Python | optimization, performance, profiling |
+| 35 | Architecture Patterns with Python | ddd, architecture, hexagonal |
+| 36 | Patrones de Diseño | design patterns, gof, software design |
+| 37 | Clean Architecture | architecture, solid, robert martin |
+| 38 | Marco de Decisión | decision making, framework |
+| 39 | Fluent Python | advanced python, internals, data structures |
+| 40 | Designing Data-Intensive Applications | data, distributed systems, kleppmann |
 
 ---
 
@@ -175,10 +176,12 @@ El agente tiene acceso prioritario a estos documentos técnicos:
 
 | Característica | Estado | Notas |
 | :--- | :--- | :--- |
-| **Routing Inteligente** | 🟢 Completo | Detecta temas y usa Tags `[[RAG]]`. |
-| **Validación de Código** | 🟢 Completo | Qwen 2.5 corrige errores automáticamente. |
+| **Routing Inteligente** | 🟢 Completo | Tags `[[WEB]]` (DeepSeek) y `[[RAG]]` (Gemini). |
+| **Validación de Código** | 🟢 Completo | qwen-validator corrige errores automáticamente. |
 | **CLI Interactivo** | 🟢 Completo | Soporte para `-i` y argumentos. |
 | **Memoria de Chat** | 🟢 Completo | Mantiene el hilo de conversación. |
+| **Aprendizaje** | 🟢 Completo | Detecta patrones (backend, routing, code_generation). |
+| **Modelfiles** | 🟢 Completo | System prompts horneados en modelos (0 tokens extra). |
 | **Tipado Estricto** | 🟢 Completo | Pasa `mypy --strict`. |
 | **Feedback UI** | 🟢 Completo | Spinners y mensajes claros con Rich. |
 
@@ -223,12 +226,12 @@ Este proyecto está bajo la licencia MIT. Ver [LICENSE](LICENSE) para más detal
 
 ## �🙏 Agradecimientos
 
-- [Ollama](https://ollama.ai/) - Modelos locales (Llama 3.1, Qwen 2.5)
+- [Ollama](https://ollama.ai/) - Modelos locales (Qwen 3.5, Qwen 2.5 Coder)
 - [FastAPI](https://fastapi.tiangolo.com/) - Framework del servidor RAG
 - [Rich](https://rich.readthedocs.io/) - Terminal UI
 - [uv](https://github.com/astral-sh/uv) - Gestor de paquetes rápido
-- [Google Gemini](https://gemini.google.com/) - RAG y procesamiento
-- [Kimi AI](https://kimi.moonshot.cn/) - Web search
+- [Google Gemini](https://gemini.google.com/) - RAG con libros indexados
+- [DeepSeek](https://deepseek.com/) - Consultor senior con 5 roles
 
 ---
 
@@ -272,26 +275,55 @@ cp .env.example .env
 
 ---
 
-📁 Estructura Final Organizada
+📁 Estructura del Proyecto
 agente/
-├── tests/                          # ✅ Tests organizados
-│   ├── test_rag_client_refactor.py
-│   ├── test_rag_gemini.py
-│   └── test_session_fix.py
+├── modelfiles/                     # Modelfiles de Ollama (system prompts horneados)
+│   ├── Modelfile.orchestrator      # qwen-orchestrator (Qwen 3.5 9B)
+│   └── Modelfile.validator         # qwen-validator (Qwen 2.5 Coder 7B)
+├── tests/                          # Tests organizados
 ├── core/                           # Código fuente
-│   ├── orchestrator.py
-│   ├── storage.py
-│   └── rag_client.py
+│   ├── orchestrator.py             # Orquestador principal (routing, aprendizaje)
+│   ├── storage.py                  # SQLite (patrones, cache, soul packages)
+│   └── rag_client.py               # Cliente API (DeepSeek + Gemini)
 ├── agents/
-│   ├── principal.py
-│   └── executor.py
+│   ├── principal.py                # Agente principal (Qwen 3.5)
+│   └── executor.py                # Agente validador (Qwen Coder)
 ├── brain/                          # Memoria del sistema
-│   ├── temporal_bridge/
-│   └── metabolism/
+│   ├── temporal_bridge/            # Soul Packages (mitosis entre sesiones)
+│   └── metabolism/                 # Presupuesto de tokens
+├── utils/
+│   └── display.py                  # UI con Rich
+├── config.py                       # Configuración centralizada
 └── cli.py                          # Punto de entrada
-
-
 
 ---
 
-*Actualizado: 21/12/2025*
+## 🗺️ Roadmap Futuro
+
+### Mini-OpenCode (Generación de Proyectos)
+
+Idea: Transformar el CLI de "chatbot que muestra código" a "generador que escribe archivos y crea proyectos".
+
+**Fases propuestas:**
+
+| Fase | Comando | Qué hace | Esfuerzo |
+|---|---|---|---|
+| 1 | `/save` | Guarda último código generado a archivo | ~50 líneas |
+| 2 | `/run` | Ejecuta comandos shell (`uv init`, `python script.py`) | ~40 líneas |
+| 3 | `/load` | Lee archivos del directorio actual como contexto | ~30 líneas |
+| 4 | `/init` | Scaffolding: carpeta + `uv init` + estructura básica | ~60 líneas |
+
+**RAG local para código generado:**
+- Indexar código generado en SQLite FTS5 (sin modelo extra de embeddings)
+- Búsqueda por archivo y tema (no por "último generado")
+- Cache con TTL por sesión (persiste mientras CLI abierto, RAG persiste entre sesiones)
+- Flujo: generar → `/save` → indexar → próxima consulta recupera solo lo relevante
+
+**Limitaciones actuales a resolver:**
+- `num_ctx: 4096` — suficiente para scripts, insuficiente para proyectos enteros
+- `num_predict: 1024` — limita longitud de código generado
+- Velocidad 28-90s — usable para generación, lento para iteración rápida
+
+---
+
+*Actualizado: 04/2026*

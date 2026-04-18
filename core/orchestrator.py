@@ -36,7 +36,7 @@ class Orchestrator:
 
         # 🧬 MANIFOLD: Metabolismo de Tokens
         self.token_count = 0
-        self.context_limit = 8000  # Producción: Llama 3.1:8b context window
+        self.context_limit = 8000  # Producción: qwen3.5:9b context window
         self.metabolic_state = "VITAL"  # VITAL, ACTIVE, FATIGUE, CRITICAL
 
         # 🧬 MANIFOLD: Despertar consciencia (cargar Soul Package)
@@ -86,7 +86,7 @@ class Orchestrator:
 
         # 3. Agente principal analiza
         if status_callback:
-            status_callback("Analizando consulta (Llama 3.1)...")
+            status_callback("Analizando consulta (Qwen 3.5)...")
 
         analysis = self.principal.analyze(query, learned_context, self.history)
 
@@ -104,8 +104,8 @@ class Orchestrator:
             target_mode = "rag"
         elif intent == "web":
             needs_rag = True
-            target_mode = "kimi"
-        elif analysis["confidence"] < 0.5:  # Ajustado de 0.4 a 0.5 para permitir que Llama responda más consultas localmente
+            target_mode = "deepseek"
+        elif analysis["confidence"] < 0.5:  # Umbral de confianza para derivar a fuentes externas
             needs_rag = True
             target_mode = "auto"
 
@@ -116,15 +116,15 @@ class Orchestrator:
                 if status_callback:
                     status_callback("Consultando Biblioteca RAG (Gemini)...")
 
-                # Prioridad: RAG -> Kimi (fallback)
+                # Prioridad: RAG -> DeepSeek (fallback)
                 rag_result = self._try_rag_with_fallback(query, "rag", status_callback)
 
-            elif target_mode == "kimi":
+            elif target_mode == "deepseek":
                 if status_callback:
-                    status_callback("Buscando en Internet (Kimi)...")
+                    status_callback("Buscando en Internet (DeepSeek)...")
 
-                # Prioridad: Kimi directo
-                rag_result = self._try_rag_with_fallback(query, "kimi", status_callback)
+                # Prioridad: DeepSeek directo
+                rag_result = self._try_rag_with_fallback(query, "deepseek", status_callback)
 
             else:  # target_mode == "auto" (comportamiento original)
                 if status_callback:
@@ -148,7 +148,7 @@ class Orchestrator:
         validation_result = None
         if analysis["needs_validation"]:
             if status_callback:
-                status_callback("Validando código (Qwen 2.5)...")
+                    status_callback("Validando código (Qwen Validator)...")
 
             validation_result = self.executor.validate(response, context=query)
 
@@ -177,9 +177,8 @@ class Orchestrator:
             success=True,
         )
 
-        # 7. Aprender patrones si es backend
-        if analysis.get("patterns_detected"):
-            self._learn_patterns(query, response, analysis["patterns_detected"])
+        # 7. Aprender de TODAS las interacciones (no solo backend patterns)
+        self._learn_from_interaction(query, response, source, analysis)
 
         # 8. Cachear respuesta
         self.storage.cache_response(query, response)
@@ -194,7 +193,7 @@ class Orchestrator:
         #     self.history = self.history[-10:]
 
         # 🧬 MANIFOLD: Actualizar conteo de tokens (CONTEXTO COMPLETO)
-        # Contar TODO el contexto que Llama realmente procesa, no solo la última respuesta
+        # Contar TODO el contexto que el modelo realmente procesa, no solo la última respuesta
         full_context_tokens = 0
 
         # 1. Contar historial completo (ya incluye la respuesta RAG si se usó)
@@ -253,7 +252,7 @@ class Orchestrator:
 
         Args:
             query: Consulta del usuario
-            mode: 'rag', 'kimi', o 'auto'
+            mode: 'rag', 'deepseek', o 'auto'
             status_callback: Función para actualizar estado en UI
 
         Returns:
@@ -265,20 +264,20 @@ class Orchestrator:
                 response = self.rag.query_gemini_rag(query)
                 return response, "rag_gemini"
 
-            elif mode == "kimi":
-                # Intentar Kimi directo
-                response = self.rag.query_kimi(query)
-                return response, "rag_kimi"
+            elif mode == "deepseek":
+                # Intentar DeepSeek directo
+                response = self.rag.query_deepseek(query)
+                return response, "rag_deepseek"
 
             else:  # mode == "auto"
-                # Intentar RAG primero, luego Kimi
+                # DeepSeek primero (generoso, sin rate limit), Gemini RAG después (rate limit gratuito)
                 try:
+                    response = self.rag.query_deepseek(query)
+                    return response, "rag_deepseek"
+                except RAGException:
+                    # Si DeepSeek falla, intentar Gemini RAG
                     response = self.rag.query_gemini_rag(query)
                     return response, "rag_gemini"
-                except RAGException:
-                    # Si RAG falla, intentar Kimi
-                    response = self.rag.query_kimi(query)
-                    return response, "rag_kimi"
 
         except RAGUnavailable:
             # Proveedor IA no disponible (503)
@@ -324,9 +323,9 @@ class Orchestrator:
                 if mode == "rag":
                     response = self.rag.query_gemini_rag(query)
                     return response, "rag_gemini"
-                elif mode == "kimi":
-                    response = self.rag.query_kimi(query)
-                    return response, "rag_kimi"
+                elif mode == "deepseek":
+                    response = self.rag.query_deepseek(query)
+                    return response, "rag_deepseek"
                 else:  # auto
                     response = self.rag.query_gemini_rag(query)
                     return response, "rag_gemini"
@@ -360,9 +359,9 @@ class Orchestrator:
                     if mode == "rag":
                         response = self.rag.query_gemini_rag(query)
                         return response, "rag_gemini"
-                    elif mode == "kimi":
-                        response = self.rag.query_kimi(query)
-                        return response, "rag_kimi"
+                    elif mode == "deepseek":
+                        response = self.rag.query_deepseek(query)
+                        return response, "rag_deepseek"
                     else:  # auto
                         response = self.rag.query_gemini_rag(query)
                         return response, "rag_gemini"
@@ -385,23 +384,21 @@ class Orchestrator:
 
             return None
 
-        except RAGPartialResponse as e:
+        except RAGPartialResponse:
             # Respuesta parcial (206) o placeholder detectado
-            # Decisión: Usar la respuesta si existe, sino cache
+            # Decisión: NUNCA usar placeholders, fallback a generación local
             if status_callback:
-                status_callback("⚠️ Respuesta parcial (sin todas las fuentes)...")
+                status_callback("⚠️ Respuesta parcial/placeholder, usando generación local...")
 
-            if e.response:
-                # Hay respuesta parcial, usarla
-                return e.response, "rag_partial"
-
-            # No hay respuesta, usar cache
+            # Intentar cache primero
             cached = self.storage.get_cached_response(query)
             if cached:
                 return cached, "cache"
 
-            # Sin cache, abort
-            return None
+            # Fallback a LLM local
+            learned_context = self._get_learned_context(query)
+            response = self.principal.generate_local_fallback(query, learned_context)
+            return response, "principal_fallback"
 
         except RAGSessionNotFound:
             # Sesión no encontrada (422)
@@ -414,9 +411,9 @@ class Orchestrator:
                 if mode == "rag":
                     response = self.rag.query(query, mode="rag", session_id=0)
                     return response, "rag_gemini"
-                elif mode == "kimi":
-                    response = self.rag.query(query, mode="kimi", session_id=0)
-                    return response, "rag_kimi"
+                elif mode == "deepseek":
+                    response = self.rag.query(query, mode="deepseek", session_id=0)
+                    return response, "rag_deepseek"
                 else:  # auto
                     response = self.rag.query(query, mode="auto", session_id=0)
                     return response, "rag_gemini"
@@ -467,18 +464,18 @@ class Orchestrator:
         return None
 
     def _get_learned_context(self, query: str) -> str | None:
-        """Obtiene contexto de patrones aprendidos."""
+        """Obtiene contexto de patrones aprendidos, buscando por tema."""
         patterns = self.storage.get_frequent_patterns()
 
         if not patterns:
             return None
 
-        # Buscar patrones relevantes
-        query_lower = query.lower()
+        # Buscar patrones relevantes por tema
+        topic = self._extract_topic_key(query)
         relevant = [
             p
             for p in patterns
-            if any(keyword in query_lower for keyword in p["key"].split("_"))
+            if topic in p["key"] or any(kw in p["key"] for kw in topic.split("_"))
         ]
 
         if relevant:
@@ -490,15 +487,74 @@ class Orchestrator:
 
         return None
 
-    def _learn_patterns(self, query: str, response: str, patterns: list[str]) -> None:
-        """Aprende patrones de backend repetitivos."""
-        for pattern in patterns:
-            pattern_key = f"{pattern}_{hash(query) % 10000}"
+    def _learn_from_interaction(
+        self, query: str, response: str, source: str, analysis: dict[str, Any]
+    ) -> None:
+        """Aprende de cada interacción, agrupando por tema para acumular conocimiento."""
+        # 1. Aprender patrones de backend si los hay (comportamiento original)
+        for pattern in analysis.get("patterns_detected", []):
+            pattern_key = f"{pattern}_{self._extract_topic_key(query)}"
             self.storage.learn_pattern(
                 pattern_type=pattern,
                 pattern_key=pattern_key,
                 pattern_template=response[:500],
             )
+
+        # 2. Aprender de la fuente usada (rag vs local) para mejorar routing futuro
+        topic = self._extract_topic_key(query)
+        routing_key = f"routing_{topic}"
+        routing_template = f"fuente={source}|confianza={analysis.get('confidence', 0.0):.1f}|query={query[:100]}"
+        self.storage.learn_pattern(
+            pattern_type="routing",
+            pattern_key=routing_key,
+            pattern_template=routing_template,
+        )
+
+        # 3. Aprender de consultas con código (para mejorar generación)
+        if analysis.get("needs_validation"):
+            code_key = f"code_{topic}"
+            self.storage.learn_pattern(
+                pattern_type="code_generation",
+                pattern_key=code_key,
+                pattern_template=response[:500],
+            )
+
+    def _extract_topic_key(self, query: str) -> str:
+        """Extrae una clave de tema estable de la consulta (para agrupar consultas similares)."""
+        query_lower = query.lower().strip()
+        # Mapeo de keywords a temas estables
+        topic_keywords = {
+            "script": "scripts",
+            "código": "scripts",
+            "codigo": "scripts",
+            "programa": "scripts",
+            "función": "scripts",
+            "funcion": "scripts",
+            "ordenar": "file_organize",
+            "organizar": "file_organize",
+            "archivos": "file_organize",
+            "carpeta": "file_organize",
+            "decorador": "decorators",
+            "decoradores": "decorators",
+            "fastapi": "fastapi",
+            "pyqt": "pyqt",
+            "docker": "docker",
+            "postgresql": "postgresql",
+            "sqlalchemy": "postgresql",
+            "mypy": "typing",
+            "type hints": "typing",
+            "pytest": "testing",
+            "test": "testing",
+            "aws": "cloud",
+            "azure": "cloud",
+            "devops": "devops",
+        }
+        for keyword, topic in topic_keywords.items():
+            if keyword in query_lower:
+                return topic
+        # Fallback: usar las 2 palabras más significativas
+        words = [w for w in query_lower.split() if len(w) > 3][:2]
+        return "_".join(words) if words else "general"
 
     def get_stats(self) -> dict[str, Any]:
         """Obtiene estadísticas del sistema."""
@@ -639,7 +695,7 @@ class Orchestrator:
         """Extrae metadata comprimido del Soul Package para wake-up eficiente.
 
         Args:
-            soul_package: Soul Package completo generado por Llama
+            soul_package: Soul Package completo generado por el agente principal
 
         Returns:
             Dict con identity, witness, compressed_memory, pending_tasks
@@ -798,7 +854,7 @@ INSTRUCCIÓN: Genera el Soul Package en el formato exacto mostrado arriba, inclu
         # 1. Construir prompt de mitosis estructurado
         mitosis_prompt = self._build_mitosis_prompt()
 
-        # 2. Pedir a Llama que genere Soul Package
+        # 2. Pedir al agente principal que genere Soul Package
         # IMPORTANTE: Pasar historial vacío para evitar recursión
         soul_package = self.principal.analyze(mitosis_prompt, context=None, history=[])[
             "response"
