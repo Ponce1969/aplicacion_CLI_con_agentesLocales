@@ -18,6 +18,8 @@ CLI inteligente que combina **modelos locales** (Qwen 3.5 + Qwen 2.5 Coder) con 
 > - 🔄 **Routing automático**: Etiquetas `[[WEB]]` y `[[RAG]]` activan fuentes externas
 > - 💬 **Modo interactivo** con memoria persistente y aprendizaje
 > - 🔍 **Type-safe** con mypy --strict
+> - 🔧 **OpenCode tools** con contratos JSON validados (Pydantic v2)
+> - 📊 **Observabilidad** con logging estructurado y métricas por operación
 
 ---
 
@@ -56,6 +58,42 @@ Dentro del modo interactivo, tienes herramientas de control:
 | `/clear` | Limpia la pantalla. |
 | `/exit` | Cierra la sesión y guarda el aprendizaje. |
 
+### 4. OpenCode Tools (JSON Structured Output)
+
+El sistema expone herramientas para integración con editores y pipelines externos. Cada tool lee de **stdin** y retorna **JSON válido** por stdout.
+
+```powershell
+# Generar código
+echo "Crea un endpoint FastAPI con repository pattern" | uv run python adapters/opencode/generate_code.py
+
+# Validar código
+cat src/models.py | uv run python adapters/opencode/validate_code.py
+
+# Pipeline: generar + auto-corregir (max 3 iteraciones)
+echo "Crea modelo User con SQLAlchemy y tests" | uv run python adapters/opencode/generate_and_fix.py 3
+
+# Auditoría de arquitectura
+cat core/orchestrator.py | uv run python adapters/opencode/audit_architecture.py
+```
+
+**Contrato de salida (ToolResult con Pydantic v2):**
+
+```json
+{
+  "success": true,
+  "data": { "response": "...", "code_blocks": [...], "validation": {...} },
+  "error": null,
+  "metadata": {
+    "tool": "generate_and_fix",
+    "generator_model": "qwen-orchestrator",
+    "validator_model": "qwen-validator",
+    "max_iterations": 3
+  }
+}
+```
+
+Los logs de observabilidad se escriben en **stderr** (JSON estructurado), sin contaminar el output de stdout.
+
 ---
 
 ## 🧠 Arquitectura del Sistema
@@ -90,7 +128,27 @@ CLI (Local)                         API (Remota)
 El sistema usa **Action Tags** para decidir automáticamente:
 - `[[WEB]]` → DeepSeek (consultas conceptuales, mejores prácticas, arquitectura, seguridad)
 - `[[RAG]]` → Gemini + libros indexados (citas textuales exactas de páginas)
-- Sin tags → Respuesta local con Qwen (código, scripts, correcciones)
+- sin tags → Respuesta local con Qwen (código, scripts, correcciones)
+
+### 🏗️ Capas del Sistema
+
+```
+adapters/opencode/          ← Tools: stdin → JSON (sin lógica de negocio)
+    ↓
+application/services/       ← Orquestación: GenerateService, ValidateService, PipelineService
+    ↓
+core/orchestrator.py        ← Único punto de dispatch (run_agent con TaskType)
+    ↓
+agents/                     ← Llamadas a Ollama (PrincipalAgent, ExecutorAgent)
+    ↓
+Ollama                      ← qwen-orchestrator (9B) + qwen-validator (7B)
+```
+
+**Principios de diseño:**
+- **Orquestación centralizada**: Todo pasa por `Orchestrator.run_agent(TaskType, input)`. Cero duplicación.
+- **Adapters delgados**: Solo I/O (stdin → service → ToolResult JSON).
+- **Application layer**: Servicios que orquestan casos de uso con observabilidad.
+- **Feedback acumulado**: El pipeline generate_and_fix pasa TODO el historial de feedback al generador en cada iteración.
 
 ---
 
@@ -172,6 +230,38 @@ El agente tiene acceso a estos libros técnicos indexados (Gemini RAG):
 
 ---
 
+## 📊 Observabilidad
+
+El sistema instrumenta cada decisión del orquestador con **logging estructurado en stderr** (JSON) y **métricas en memoria**.
+
+### Eventos registrados
+
+| Evento | Datos clave |
+|--------|-------------|
+| `process_start` | query_length, history_size, metabolic_state |
+| `routing_decision` | intent, confidence, needs_rag, target_mode |
+| `cache_hit` | duration |
+| `rag_success` | source, target_mode |
+| `validation_result` | is_valid, suggestions_count |
+| `process_complete` | source, confidence, execution_time, token_count |
+| `generate_complete` | intent, confidence, needs_validation |
+| `validate_complete` | is_valid |
+
+### Métricas disponibles
+
+- **Contadores**: `cache_hits`, `validation_triggered`, `validation_passed`, `validation_failed`, `task_generate`, `task_validate`
+- **Timings**: `generate`, `validate`, `pipeline_total`, `iteration`
+
+### Ejemplo de log
+
+```json
+{"timestamp": "2026-04-20T00:23:24.507736+00:00", "event": "routing_decision", "intent": "local", "confidence": 0.9, "needs_rag": false, "target_mode": null}
+{"timestamp": "2026-04-20T00:23:33.446990+00:00", "event": "validation_result", "is_valid": true, "suggestions_count": 0}
+{"timestamp": "2026-04-20T00:23:33.446990+00:00", "event": "process_complete", "source": "principal", "confidence": 0.9, "execution_time": 84.98, "token_count": 156}
+```
+
+---
+
 ## ✅ Estado del Proyecto
 
 | Característica | Estado | Notas |
@@ -184,6 +274,10 @@ El agente tiene acceso a estos libros técnicos indexados (Gemini RAG):
 | **Modelfiles** | 🟢 Completo | System prompts horneados en modelos (0 tokens extra). |
 | **Tipado Estricto** | 🟢 Completo | Pasa `mypy --strict`. |
 | **Feedback UI** | 🟢 Completo | Spinners y mensajes claros con Rich. |
+| **OpenCode Tools** | 🟢 Completo | 4 tools con contratos JSON (Pydantic v2), stdin-based. |
+| **Observabilidad** | 🟢 Completo | Logging estructurado + métricas por operación. |
+| **Pipeline Generator-Validator** | 🟢 Completo | Loop controlado con feedback acumulado. |
+| **Cross-platform UTF-8** | 🟢 Completo | Encoding forzado en entrypoints (Windows/Linux/Mac). |
 
 ---
 
@@ -217,14 +311,14 @@ Este proyecto está bajo la licencia MIT. Ver [LICENSE](LICENSE) para más detal
 
 ---
 
-## � Repositorios Relacionados
+## 📁 Repositorios Relacionados
 
 - **CLI (Este repositorio)**: [aplicacion_CLI_con_agentesLocales](https://github.com/Ponce1969/aplicacion_CLI_con_agentesLocales)
 - **API RAG**: [agente_hibrido_texto_Kimi_rag_Gemini](https://github.com/Ponce1969/agente_hibrido_texto_Kimi_rag_Gemini)
 
 ---
 
-## �🙏 Agradecimientos
+## 🙏 Agradecimientos
 
 - [Ollama](https://ollama.ai/) - Modelos locales (Qwen 3.5, Qwen 2.5 Coder)
 - [FastAPI](https://fastapi.tiangolo.com/) - Framework del servidor RAG
@@ -232,12 +326,13 @@ Este proyecto está bajo la licencia MIT. Ver [LICENSE](LICENSE) para más detal
 - [uv](https://github.com/astral-sh/uv) - Gestor de paquetes rápido
 - [Google Gemini](https://gemini.google.com/) - RAG con libros indexados
 - [DeepSeek](https://deepseek.com/) - Consultor senior con 5 roles
+- [Pydantic](https://docs.pydantic.dev/) - Validación de contratos JSON
 
 ---
 
 ## 📞 Contacto y Soporte
 
-¿Preguntas sobre la conexión CLI ↔ API? 
+¿Preguntas sobre la conexión CLI ↔ API?
 
 - **Issues CLI**: [Crear issue aquí](https://github.com/Ponce1969/aplicacion_CLI_con_agentesLocales/issues)
 - **Issues API**: [Crear issue en API](https://github.com/Ponce1969/agente_hibrido_texto_Kimi_rag_Gemini/issues)
@@ -276,25 +371,42 @@ cp .env.example .env
 ---
 
 📁 Estructura del Proyecto
+```
 agente/
-├── modelfiles/                     # Modelfiles de Ollama (system prompts horneados)
-│   ├── Modelfile.orchestrator      # qwen-orchestrator (Qwen 3.5 9B)
-│   └── Modelfile.validator         # qwen-validator (Qwen 2.5 Coder 7B)
-├── tests/                          # Tests organizados
-├── core/                           # Código fuente
-│   ├── orchestrator.py             # Orquestador principal (routing, aprendizaje)
-│   ├── storage.py                  # SQLite (patrones, cache, soul packages)
-│   └── rag_client.py               # Cliente API (DeepSeek + Gemini)
+├── adapters/
+│   └── opencode/              # Tools: generate_code, validate_code, generate_and_fix, audit_architecture
+│       ├── base.py            # ToolResult (Pydantic v2), BaseTool, read_stdin
+│       └── *.py               # Tools standalone (stdin → JSON)
+├── application/
+│   ├── observability/         # Logging estructurado + métricas
+│   │   ├── logger.py          # StructuredLogger (JSON a stderr)
+│   │   └── metrics.py         # MetricsCollector (counters + timings)
+│   ├── services/              # Casos de uso
+│   │   ├── generate_service.py
+│   │   ├── validate_service.py
+│   │   └── pipeline_service.py    # Generator-Validator loop
+│   └── task_types.py          # TaskType enum (GENERATE, VALIDATE, PROCESS)
+├── modelfiles/                # Modelfiles de Ollama (system prompts horneados)
+│   ├── Modelfile.orchestrator # qwen-orchestrator (Qwen 3.5 9B)
+│   └── Modelfile.validator    # qwen-validator (Qwen 2.5 Coder 7B)
+├── tests/                     # Tests organizados
+├── core/                      # Código fuente
+│   ├── orchestrator.py        # Orquestador principal (routing, aprendizaje, observabilidad)
+│   ├── storage.py             # SQLite (patrones, cache, soul packages)
+│   ├── rag_client.py          # Cliente API (DeepSeek + Gemini)
+│   ├── exceptions.py          # Excepciones de dominio
+│   └── ports.py               # Protocolos abstractos
 ├── agents/
-│   ├── principal.py                # Agente principal (Qwen 3.5)
-│   └── executor.py                # Agente validador (Qwen Coder)
-├── brain/                          # Memoria del sistema
-│   ├── temporal_bridge/            # Soul Packages (mitosis entre sesiones)
-│   └── metabolism/                 # Presupuesto de tokens
+│   ├── principal.py           # Agente principal (Qwen 3.5)
+│   └── executor.py            # Agente validador (Qwen Coder)
+├── brain/                     # Memoria del sistema
+│   ├── temporal_bridge/       # Soul Packages (mitosis entre sesiones)
+│   └── metabolism/            # Presupuesto de tokens
 ├── utils/
-│   └── display.py                  # UI con Rich
-├── config.py                       # Configuración centralizada
-└── cli.py                          # Punto de entrada
+│   └── display.py             # UI con Rich
+├── config.py                  # Configuración centralizada
+└── cli.py                     # Punto de entrada (CLI interactivo)
+```
 
 ---
 

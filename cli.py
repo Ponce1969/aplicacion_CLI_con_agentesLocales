@@ -4,6 +4,17 @@ import argparse
 import sys
 from typing import NoReturn
 
+
+def _setup_unicode() -> None:
+    """Force UTF-8 encoding for cross-platform terminal support."""
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8")
+
+
+_setup_unicode()
+
 from rich.prompt import Prompt
 
 from core.orchestrator import Orchestrator

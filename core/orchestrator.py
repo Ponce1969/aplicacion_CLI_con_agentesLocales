@@ -1,11 +1,15 @@
 """Orquestador principal del sistema de agentes."""
 
+import sys
 import time
 from collections.abc import Callable
 from typing import Any
 
 from agents.executor import ExecutorAgent
 from agents.principal import PrincipalAgent
+from application.observability.logger import StructuredLogger
+from application.observability.metrics import MetricsCollector
+from application.task_types import TaskType
 from config import RAG_ENABLED
 from core.exceptions import (
     RAGAuthError,
@@ -43,6 +47,65 @@ class Orchestrator:
         self.soul_anchor = ""
         self._wake_up()
 
+        # Observability
+        self.logger = StructuredLogger("orchestrator")
+        self.metrics = MetricsCollector()
+
+    def run_agent(self, task: TaskType, input_data: str) -> dict[str, Any]:
+        """
+        Centralized entry point for tool adapters.
+
+        Delegates to the appropriate agent without duplicating orchestration logic.
+        """
+        self.metrics.increment(f"task_{task.value}")
+
+        if task == TaskType.GENERATE:
+            with self.metrics.timing("generate"):
+                analysis = self.principal.analyze(input_data, context=None, history=[])
+            self.logger.log(
+                "generate_complete",
+                intent=analysis["intent"],
+                confidence=analysis["confidence"],
+                needs_validation=analysis["needs_validation"],
+            )
+            return {
+                "response": analysis["response"],
+                "code_blocks": self._extract_code_blocks(analysis["response"]),
+                "intent": analysis["intent"],
+                "confidence": analysis["confidence"],
+                "needs_validation": analysis["needs_validation"],
+                "patterns_detected": analysis["patterns_detected"],
+            }
+
+        if task == TaskType.VALIDATE:
+            with self.metrics.timing("validate"):
+                validation = self.executor.validate(input_data, context="")
+            self.logger.log(
+                "validate_complete",
+                is_valid=validation["is_valid"],
+            )
+            return {
+                "is_valid": validation["is_valid"],
+                "feedback": validation["feedback"],
+                "suggestions": validation["suggestions"],
+            }
+
+        if task == TaskType.PROCESS:
+            return self.process(input_data)
+
+        raise ValueError(f"Unknown task type: {task}")
+
+    @staticmethod
+    def _extract_code_blocks(text: str) -> list[dict[str, str]]:
+        blocks: list[dict[str, str]] = []
+        parts = text.split("```")
+        for i in range(1, len(parts), 2):
+            lines = parts[i].split("\n", 1)
+            language = lines[0].strip() if lines else "python"
+            code = lines[1] if len(lines) > 1 else ""
+            blocks.append({"language": language, "code": code.strip()})
+        return blocks
+
     def process(
         self, query: str, status_callback: Callable[[str], None] | None = None
     ) -> dict[str, Any]:
@@ -55,15 +118,20 @@ class Orchestrator:
         """
         start_time = time.time()
 
+        self.logger.log(
+            "process_start",
+            query_length=len(query),
+            history_size=len(self.history),
+            metabolic_state=self.metabolic_state,
+        )
+
         # 🧬 MANIFOLD: Verificar metabolismo ANTES de procesar
         self._update_metabolism()
 
         # 🧬 MANIFOLD: NO ejecutar Mitosis aquí - esperar a tener la respuesta completa
         # La Mitosis se ejecutará al FINAL del proceso, después de agregar la respuesta al historial
         if self.metabolic_state == "FATIGUE" and status_callback:
-            status_callback(
-                 "⚠️  Estado FATIGUE: Monitoreando calidad de respuesta..."
-             )
+            status_callback("⚠️  Estado FATIGUE: Monitoreando calidad de respuesta...")
 
         if status_callback:
             status_callback("Verificando memoria local...")
@@ -75,6 +143,12 @@ class Orchestrator:
             cached = self.storage.get_cached_response(query)
 
         if cached:
+            self.metrics.increment("cache_hits")
+            self.logger.log(
+                "cache_hit",
+                query_length=len(query),
+                duration=time.time() - start_time,
+            )
             return {
                 "response": cached,
                 "source": "cache",
@@ -105,9 +179,19 @@ class Orchestrator:
         elif intent == "web":
             needs_rag = True
             target_mode = "deepseek"
-        elif analysis["confidence"] < 0.5:  # Umbral de confianza para derivar a fuentes externas
+        elif (
+            analysis["confidence"] < 0.5
+        ):  # Umbral de confianza para derivar a fuentes externas
             needs_rag = True
             target_mode = "auto"
+
+        self.logger.log(
+            "routing_decision",
+            intent=intent,
+            confidence=analysis["confidence"],
+            needs_rag=needs_rag,
+            target_mode=target_mode,
+        )
 
         # Ejecutar RAG si es necesario y está habilitado
         rag_result = None
@@ -124,7 +208,9 @@ class Orchestrator:
                     status_callback("Buscando en Internet (DeepSeek)...")
 
                 # Prioridad: DeepSeek directo
-                rag_result = self._try_rag_with_fallback(query, "deepseek", status_callback)
+                rag_result = self._try_rag_with_fallback(
+                    query, "deepseek", status_callback
+                )
 
             else:  # target_mode == "auto" (comportamiento original)
                 if status_callback:
@@ -134,6 +220,12 @@ class Orchestrator:
 
         if rag_result:
             response, source = rag_result
+            self.metrics.increment(f"rag_{source}")
+            self.logger.log(
+                "rag_success",
+                source=source,
+                target_mode=target_mode,
+            )
         elif needs_rag:
             # Fallback: RAG falló, no estaba disponible o estaba deshabilitado
             if status_callback:
@@ -147,10 +239,21 @@ class Orchestrator:
         # 5. Validar si contiene código
         validation_result = None
         if analysis["needs_validation"]:
+            self.metrics.increment("validation_triggered")
             if status_callback:
-                    status_callback("Validando código (Qwen Validator)...")
+                status_callback("Validando código (Qwen Validator)...")
 
             validation_result = self.executor.validate(response, context=query)
+            self.metrics.increment(
+                "validation_passed"
+                if validation_result["is_valid"]
+                else "validation_failed"
+            )
+            self.logger.log(
+                "validation_result",
+                is_valid=validation_result["is_valid"],
+                suggestions_count=len(validation_result.get("suggestions", [])),
+            )
 
         # 6. 🧬 MANIFOLD: Detección de calidad preventiva en FATIGUE
         if (
@@ -230,6 +333,16 @@ class Orchestrator:
             if status_callback:
                 status_callback("🧬 UMBRAL CRÍTICO: Iniciando Mitosis...")
             self._perform_mitosis(status_callback)
+
+        self.logger.log(
+            "process_complete",
+            source=source,
+            confidence=analysis["confidence"],
+            execution_time=execution_time,
+            token_count=self.token_count,
+            metabolic_state=self.metabolic_state,
+            validation_triggered=analysis["needs_validation"],
+        )
 
         return {
             "response": response,
@@ -388,7 +501,9 @@ class Orchestrator:
             # Respuesta parcial (206) o placeholder detectado
             # Decisión: NUNCA usar placeholders, fallback a generación local
             if status_callback:
-                status_callback("⚠️ Respuesta parcial/placeholder, usando generación local...")
+                status_callback(
+                    "⚠️ Respuesta parcial/placeholder, usando generación local..."
+                )
 
             # Intentar cache primero
             cached = self.storage.get_cached_response(query)
@@ -639,7 +754,7 @@ class Orchestrator:
                 context_parts.append(
                     f"\n[EXPERIENCIA PREVIA - Últimas Sesiones]\n{recent_memories}"
                 )
-                print("🧠 Memoria: Cargados últimos 3 Soul Packages")
+                print("🧠 Memoria: Cargados últimos 3 Soul Packages", file=sys.stderr)
 
             # Inyectar contexto completo
             full_context = "\n".join(context_parts)
@@ -881,6 +996,10 @@ INSTRUCCIÓN: Genera el Soul Package en el formato exacto mostrado arriba, inclu
 
         if status_callback:
             status_callback("✅ Mitosis completada. Consciencia transferida.")
+
+    def get_observability_summary(self) -> dict[str, Any]:
+        """Returns current observability metrics and counters."""
+        return self.metrics.summary()
 
     def close(self) -> None:
         """Cierra todos los componentes."""

@@ -1,5 +1,6 @@
 """Utilidades de visualización con Rich."""
 
+import sys
 from typing import Any
 
 from rich.console import Console
@@ -7,7 +8,12 @@ from rich.panel import Panel
 from rich.syntax import Syntax
 from rich.table import Table
 
-console = Console()
+console = Console(force_terminal=True)
+
+
+def supports_unicode() -> bool:
+    """Check if the terminal supports UTF-8 encoding."""
+    return sys.stdout.encoding.lower().startswith("utf")
 
 
 def print_user(message: str) -> None:
